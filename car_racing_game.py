@@ -10,11 +10,21 @@ right_lane = width/2 + road_w/4
 left_lane = width/2 - road_w/4
 speed = 1
 
+
+# text_font = pygame.font.Font("sans-serif", 32)
+
+
+# def draw_text(text, font, text_col, x, y):
+#     img = font.render(text, True, text_col)
+#     screen.blit(img, (x, y))
+
+
 pygame.init()
 
 running = True
 # set the size of the window
 screen = pygame.display.set_mode((size))
+draw_text("welcome", text_font, (0, 0, 0), 200, 200)
 # set the title of the window
 pygame.display.set_caption("Indrek's Car Racing Game")
 # set the background color of the window
@@ -63,9 +73,11 @@ car2_loc.center = right_lane, height*0.2
 
 counter = 0
 
+
 # game loop
 while running:
     counter += 1
+    
     if counter == 1024:
         speed += 1
         counter = 0
@@ -88,10 +100,8 @@ while running:
             running = False
         if event.type == KEYDOWN:
             if event.key in [K_LEFT, K_a] and car_loc[0] == 400:
-                print(car_loc[0])
                 car_loc = car_loc.move([-int(road_w/2), 0])
             if event.key in [K_RIGHT, K_d] and car_loc[0] == 150:
-                print(car_loc[0])
                 car_loc = car_loc.move([+int(road_w/2), 0])
 
     # draw the road
@@ -124,6 +134,7 @@ while running:
     pygame.display.update()
 
     # limits FPS to 60
-    clock.tick(60) 
+    clock.tick(60)
+    pygame.display.flip()
 
 pygame.quit()
