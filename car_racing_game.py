@@ -3,6 +3,7 @@ from pygame.locals import *
 import random
 
 size = width, height = (800, 800)
+clock = pygame.time.Clock()
 road_w = int(width/1.6)
 roadmark_w = int(width/80)
 right_lane = width/2 + road_w/4
@@ -65,8 +66,8 @@ counter = 0
 # game loop
 while running:
     counter += 1
-    if counter == 5000:
-        speed += 0.15
+    if counter == 1024:
+        speed += 1
         counter = 0
         print("Level up! Speed increased to", speed)
     # animate enemy car
@@ -86,9 +87,11 @@ while running:
         if event.type == QUIT:
             running = False
         if event.type == KEYDOWN:
-            if event.key in [K_LEFT, K_a]:
+            if event.key in [K_LEFT, K_a] and car_loc[0] == 400:
+                print(car_loc[0])
                 car_loc = car_loc.move([-int(road_w/2), 0])
-            if event.key in [K_RIGHT, K_d]:
+            if event.key in [K_RIGHT, K_d] and car_loc[0] == 150:
+                print(car_loc[0])
                 car_loc = car_loc.move([+int(road_w/2), 0])
 
     # draw the road
@@ -119,5 +122,8 @@ while running:
     screen.blit(car, car_loc)
     screen.blit(car2, car2_loc)
     pygame.display.update()
+
+    # limits FPS to 60
+    clock.tick(60) 
 
 pygame.quit()
