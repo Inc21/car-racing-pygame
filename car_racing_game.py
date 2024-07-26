@@ -24,7 +24,7 @@ pygame.init()
 running = True
 # set the size of the window
 screen = pygame.display.set_mode((size))
-draw_text("welcome", text_font, (0, 0, 0), 200, 200)
+# draw_text("welcome", text_font, (0, 0, 0), 200, 200)
 # set the title of the window
 pygame.display.set_caption("Indrek's Car Racing Game")
 # set the background color of the window
