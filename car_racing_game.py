@@ -1,5 +1,5 @@
 import pygame
-from pygame.locals import *
+from pygame.locals import * # noqa
 import random
 
 size = width, height = (800, 800)
@@ -11,12 +11,17 @@ left_lane = width/2 - road_w/4
 speed = 1
 
 
-# text_font = pygame.font.Font("sans-serif", 32)
+def show_level():
+    level_obj = pygame.font.SysFont("comicsans", 35, True)
+    level_txt = level_obj.render("Level: " + str(speed), 1, (255, 255, 255))
+    screen.blit(level_txt, (5, 5))
 
 
-# def draw_text(text, font, text_col, x, y):
-#     img = font.render(text, True, text_col)
-#     screen.blit(img, (x, y))
+def game_over():
+    screen.fill((0, 0, 0))
+    over_obj = pygame.font.SysFont("comicsans", 50, True)
+    over_txt = over_obj.render("Game Over", 1, (255, 255, 255))
+    screen.blit(over_txt, (width/2, height/2))
 
 
 pygame.init()
@@ -77,10 +82,11 @@ counter = 0
 # game loop
 while running:
     counter += 1
-    
-    if counter == 1024:
+
+    if counter == 800:
         speed += 1
         counter = 0
+
         print("Level up! Speed increased to", speed)
     # animate enemy car
     car2_loc[1] += speed
@@ -91,17 +97,18 @@ while running:
             car2_loc.center = right_lane, -200
     # end game
     if car_loc[0] == car2_loc[0] and car2_loc[1] > car_loc[1] - 250:
+        game_over()
         print("Game Over")
-        break
+        # break
 
     # event listeners
     for event in pygame.event.get():
-        if event.type == QUIT:
+        if event.type == QUIT: # noqa
             running = False
-        if event.type == KEYDOWN:
-            if event.key in [K_LEFT, K_a] and car_loc[0] == 400:
+        if event.type == KEYDOWN: # noqa
+            if event.key in [K_LEFT, K_a] and car_loc[0] == 400: # noqa
                 car_loc = car_loc.move([-int(road_w/2), 0])
-            if event.key in [K_RIGHT, K_d] and car_loc[0] == 150:
+            if event.key in [K_RIGHT, K_d] and car_loc[0] == 150: # noqa
                 car_loc = car_loc.move([+int(road_w/2), 0])
 
     # draw the road
@@ -129,6 +136,8 @@ while running:
         (255, 255, 255),
         (width/2-road_w/2 + roadmark_w*2, 0, roadmark_w, height))
 
+    show_level()
+
     screen.blit(car, car_loc)
     screen.blit(car2, car2_loc)
     pygame.display.update()
@@ -137,4 +146,4 @@ while running:
     clock.tick(60)
     pygame.display.flip()
 
-pygame.quit()
+# pygame.quit()
