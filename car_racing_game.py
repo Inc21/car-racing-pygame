@@ -1,6 +1,9 @@
 import pygame
+import sys
 from pygame.locals import * # noqa
 import random
+
+pygame.init()
 
 size = width, height = (800, 800)
 clock = pygame.time.Clock()
@@ -9,6 +12,7 @@ roadmark_w = int(width/80)
 right_lane = width/2 + road_w/4
 left_lane = width/2 - road_w/4
 speed = 1
+font = pygame.font.SysFont("comicsans", 35, True)
 
 
 def show_level():
@@ -17,14 +21,36 @@ def show_level():
     screen.blit(level_txt, (5, 5))
 
 
+def draw_text(text, font, color, x, y):
+    text_obj = font.render(text, 1, color)
+    text_rect = text_obj.get_rect()
+    text_rect.topleft = (x, y)
+    screen.blit(text_obj, text_rect)
+
+
+# def main_menu():
+#     while True:
+#         screen.fill((0, 0, 0))
+#         draw_text("Main Menu", font, (255, 255, 255), 200, 200)
+
+#         for event in pygame.event.get():
+#             if event.type == QUIT: # noqa
+#                 pygame.quit()
+#                 sys.exit()
+#             if event.type == K_ESCAPE: # noqa
+#                 pygame.quit()
+#                 sys.exit()
+
+#         pygame.display.update()
+#         clock.tick(60)
+
+
 def game_over():
     screen.fill((0, 0, 0))
     over_obj = pygame.font.SysFont("comicsans", 50, True)
     over_txt = over_obj.render("Game Over", 1, (255, 255, 255))
     screen.blit(over_txt, (width/2, height/2))
 
-
-pygame.init()
 
 running = True
 # set the size of the window
