@@ -21,6 +21,13 @@ text_col = (255, 255, 255)
 # set the size of the window
 screen = pygame.display.set_mode((size))
 
+# load button images
+resume_img = pygame.image.load("images/button_resume.png").convert_alpha()
+
+# create button instances
+resume_button = buttons.Button(300, 125, resume_img, 1)
+
+
 # game variables
 game_paused = False
 
@@ -120,7 +127,8 @@ while run:
 
     # check if game is paused
     if game_paused:
-        pass
+        if resume_button.draw(screen):
+            game_paused = False
         # display menu
     else:
         draw_text("Press SPACE to pause", font, text_col, 160, 250)
