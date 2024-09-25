@@ -123,7 +123,7 @@ counter = 0
 # game loop
 run = True
 while run:
-    screen.fill((52, 78, 91))
+    screen.fill((34, 139, 34))
 
     # check if game is paused
     if game_paused:
@@ -131,74 +131,72 @@ while run:
             game_paused = False
         # display menu
     else:
-        draw_text("Press SPACE to pause", font, text_col, 160, 250)
+        # draw_text("Press SPACE to pause", font, text_col, 160, 250)
+        counter += 1
 
+        if counter == 800:
+            speed += 1
+            counter = 0
+
+            print("Level up! Speed increased to", speed)
+        # animate enemy car
+        car2_loc[1] += speed
+        if car2_loc[1] > height:
+            if random.randint(0, 1):
+                car2_loc.center = left_lane, -200
+            else:
+                car2_loc.center = right_lane, -200
+        # end game
+        if car_loc[0] == car2_loc[0] and car2_loc[1] > car_loc[1] - 250:
+            # break
+            # game_over()
+
+            # draw_text("Game Over", font, text_col, 160, 250)
+            print("Game Over")
+            # break
+
+    # event listeners
     for event in pygame.event.get():
-        if event.type == pygame.KEYDOWN:
+        if event.type == QUIT: # noqa
+            run = False
+        if event.type == KEYDOWN: # noqa
+            if event.key in [K_LEFT, K_a] and car_loc[0] == 400: # noqa
+                car_loc = car_loc.move([-int(road_w/2), 0])
+            if event.key in [K_RIGHT, K_d] and car_loc[0] == 150: # noqa
+                car_loc = car_loc.move([+int(road_w/2), 0])
             if event.key == pygame.K_SPACE:
                 game_paused = True
-        if event.type == pygame.QUIT:
-            run = False
 
-    # counter += 1
+    # draw the road
+    pygame.draw.rect(
+        screen,
+        (50, 50, 50),
+        (width/2-road_w/2, 0, road_w, height)
+    )
 
-    # if counter == 800:
-    #     speed += 1
-    #     counter = 0
+    # draw the center line
+    pygame.draw.rect(
+        screen,
+        (255, 240, 60),
+        (width/2-roadmark_w/2, 0, roadmark_w, height))
 
-    #     print("Level up! Speed increased to", speed)
-    # # animate enemy car
-    # car2_loc[1] += speed
-    # if car2_loc[1] > height:
-    #     if random.randint(0, 1):
-    #         car2_loc.center = left_lane, -200
-    #     else:
-    #         car2_loc.center = right_lane, -200
-    # # end game
-    # if car_loc[0] == car2_loc[0] and car2_loc[1] > car_loc[1] - 250:
-    #     game_over()
-    #     print("Game Over")
-    #     # break
+    # draw right road mark
+    pygame.draw.rect(
+        screen,
+        (255, 255, 255),
+        (width/2+road_w/2 - roadmark_w*3, 0, roadmark_w, height))
 
-    # # event listeners
-    # for event in pygame.event.get():
-    #     if event.type == QUIT: # noqa
-    #         running = False
-    #     if event.type == KEYDOWN: # noqa
-    #         if event.key in [K_LEFT, K_a] and car_loc[0] == 400: # noqa
-    #             car_loc = car_loc.move([-int(road_w/2), 0])
-    #         if event.key in [K_RIGHT, K_d] and car_loc[0] == 150: # noqa
-    #             car_loc = car_loc.move([+int(road_w/2), 0])
+    # draw left road mark
+    pygame.draw.rect(
+        screen,
+        (255, 255, 255),
+        (width/2-road_w/2 + roadmark_w*2, 0, roadmark_w, height))
 
-    # # draw the road
-    # pygame.draw.rect(
-    #     screen,
-    #     (50, 50, 50),
-    #     (width/2-road_w/2, 0, road_w, height)
-    # )
+    show_level()
 
-    # # draw the center line
-    # pygame.draw.rect(
-    #     screen,
-    #     (255, 240, 60),
-    #     (width/2-roadmark_w/2, 0, roadmark_w, height))
+    screen.blit(car, car_loc)
+    screen.blit(car2, car2_loc)
 
-    # # draw right road mark
-    # pygame.draw.rect(
-    #     screen,
-    #     (255, 255, 255),
-    #     (width/2+road_w/2 - roadmark_w*3, 0, roadmark_w, height))
-
-    # # draw left road mark
-    # pygame.draw.rect(
-    #     screen,
-    #     (255, 255, 255),
-    #     (width/2-road_w/2 + roadmark_w*2, 0, roadmark_w, height))
-
-    # show_level()
-
-    # screen.blit(car, car_loc)
-    # screen.blit(car2, car2_loc)
     pygame.display.update()
 
     # limits FPS to 60
