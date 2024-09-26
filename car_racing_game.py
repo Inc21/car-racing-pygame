@@ -196,10 +196,11 @@ while run:
         pygame.display.update()
     if game_over:
         draw_text("Game Over", font, text_col, 300, 250)
+        draw_text(f"Your Reached Level {speed}", font, text_col, 200, 300)
         if resume_button.draw(screen):
             game_paused = False
             game_over = False
-            level = 1
+            speed = 1
             car_loc.center = left_lane, height*0.8
             car2_loc.center = right_lane, height*0.2
     # limits FPS to 60
