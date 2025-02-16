@@ -10,6 +10,7 @@ from pygame.locals import (
     K_RETURN, K_BACKSPACE, 
     QUIT, KEYDOWN, K_LEFT, K_RIGHT, K_a, K_d
 )
+import textwrap  # Make sure to import the textwrap module
 
 pygame.init()
 
@@ -36,6 +37,11 @@ video_img = pygame.image.load("images/buttons/button_video.png").convert_alpha()
 audio_img = pygame.image.load("images/buttons/button_audio.png").convert_alpha()
 keys_img = pygame.image.load("images/buttons/button_keys.png").convert_alpha()
 back_img = pygame.image.load("images/buttons/button_back.png").convert_alpha()
+instructions_img = pygame.image.load("images/buttons/button_instructions.png").convert_alpha()  # Load instructions button
+
+# Load toggle images
+toggle_on_img = pygame.image.load("images/buttons/toggle_on.png").convert_alpha()
+toggle_off_img = pygame.image.load("images/buttons/toggle_off.png").convert_alpha()
 
 # Calculate center position for each button based on its actual width
 def center_button_x(button_image):
@@ -47,12 +53,14 @@ start_button = buttons.Button(center_button_x(start_game_img), 200, start_game_i
 options_button = buttons.Button(center_button_x(options_img), 300, options_img, 1)
 highscore_button = buttons.Button(center_button_x(highscore_img), 400, highscore_img, 1)
 quit_button = buttons.Button(center_button_x(quit_img), 500, quit_img, 1)
+instructions_button = buttons.Button(center_button_x(instructions_img), 100, instructions_img, 1)  # Position at the top
 
-# Options menu buttons
-video_button = buttons.Button(center_button_x(video_img), 200, video_img, 1)
-audio_button = buttons.Button(center_button_x(audio_img), 300, audio_img, 1)
-keys_button = buttons.Button(center_button_x(keys_img), 400, keys_img, 1)
+# Create button instances with centered positions
 back_button = buttons.Button(center_button_x(back_img), 650, back_img, 1)
+
+# Create toggle button instances
+music_toggle = buttons.Button(center_button_x(toggle_on_img), 300, toggle_on_img, 1)  # Placeholder for music toggle
+sfx_toggle = buttons.Button(center_button_x(toggle_on_img), 350, toggle_on_img, 1)  # Placeholder for sound effects toggle
 
 # game variables
 game_paused = False
@@ -65,7 +73,7 @@ game_over_sound_played = False
 font = pygame.font.SysFont("arialblack", 35)
 
 # set the title of the window
-pygame.display.set_caption("Indrek's Car Racing Game")
+pygame.display.set_caption("Mustang Mayhem")
 
 # Near the top with other image loading
 # Load background image
@@ -455,6 +463,46 @@ def draw_scenery():
                 screen.blit(bush_img, scenery["pos"])
 
 
+# Add this function to display "How to Play" instructions
+def draw_how_to_play():
+    how_to_play_text = [
+        "Use the arrow keys to steer your Mustang.",
+        "Avoid obstacles on the road to keep your car safe.",
+        "Press the Space Bar to pause the game.",
+        "The game gradually increases in speed and levels as you progress.",
+        "Try to achieve the highest score possible!"
+    ]
+    
+    padding = 50  # Keep the original padding
+    line_height = 30  # Increased height for each line to add gaps
+    max_width = width - (2 * padding)  # Calculate maximum width for text
+    y_position = 150  # Starting Y position for the first line
+    x_offset = 100  # Additional offset to move text to the right
+
+    for index, line in enumerate(how_to_play_text, start=1):
+        # Wrap the text to fit within the specified width
+        wrapped_lines = textwrap.wrap(f"{index}. {line}", width=max_width // font.size('A')[0])  # Adjust width based on font size
+        
+        for wrapped_line in wrapped_lines:
+            screen.blit(font.render(wrapped_line, True, (255, 255, 255)), (padding + x_offset, y_position))  # Add offset to x position
+            y_position += line_height  # Move down for the next line
+
+        # Increment y_position for the next numbered item
+        y_position += 10  # Add extra space between numbered items
+
+
+# Initialize toggle states
+music_enabled = True  # Music is enabled by default
+sfx_enabled = True    # Sound effects are enabled by default
+
+# Update the toggle button images based on the state
+def update_toggle_images():
+    music_toggle.image = toggle_on_img if music_enabled else toggle_off_img
+    sfx_toggle.image = toggle_on_img if sfx_enabled else toggle_off_img
+
+# Call this function initially to set the correct images
+update_toggle_images()
+
 while run:
     screen.fill((34, 139, 34))
 
@@ -468,14 +516,14 @@ while run:
         
         # Draw animated title with glow effect
         draw_glowing_rainbow_text(
-            "Car Racing Game",
+            "Mustang Mayhem",
             title_font,
             width//2,
             80,
             animation_counter
         )
         
-        # Add hover effect to buttons
+        # Draw main menu buttons
         if start_button.draw(screen):
             button_sound.play()
             if current_music:
@@ -497,21 +545,29 @@ while run:
             button_sound.play()
             run = False
 
-        # Draw moving background cars higher up
-        screen.blit(car2, (50 + math.sin(animation_counter) * 30, 
-                          450 + math.cos(animation_counter) * 20))  # Was 600
-        screen.blit(car, (width - 150 + math.cos(animation_counter) * 30, 
-                         450 + math.sin(animation_counter) * 20))  # Was 600
-
     elif menu_state == "options":
         play_menu_music()  # Play menu music in options
         # Draw options buttons
-        if video_button.draw(screen):
-            print("Video settings")
-        if audio_button.draw(screen):
-            print("Audio settings")
-        if keys_button.draw(screen):
-            print("Key settings")
+        if instructions_button.draw(screen):  # New button for instructions
+            menu_state = "instructions"  # Change to instructions state
+            button_sound.play()
+        
+        # Draw toggle buttons for music
+        draw_text("Music:", font, text_col, width//2 - 280, 260)  # Label for music toggle
+        music_toggle.rect.x = width//2 - -50  # Position music toggle button to the right of the label
+        music_toggle.rect.y = 250  # Align with the label
+        if music_toggle.draw(screen):
+            music_enabled = not music_enabled  # Toggle music state
+            update_toggle_images()  # Update button image
+
+        # Draw toggle buttons for sound effects
+        draw_text("Sound Effects:", font, text_col, width//2 - 280, 370)  # Adjusted Y position
+        sfx_toggle.rect.x = width//2 - -50  # Position sound effects toggle button to the right of the label
+        sfx_toggle.rect.y = 360  # Increased Y position for more space
+        if sfx_toggle.draw(screen):
+            sfx_enabled = not sfx_enabled  # Toggle sound effects state
+            update_toggle_images()  # Update button image
+
         if back_button.draw(screen):
             menu_state = previous_menu_state  # Return to previous menu state
             button_sound.play()
@@ -544,6 +600,17 @@ while run:
             speed = 1
             car_loc.center = left_lane, height*0.8
             car2_loc.center = right_lane, height*0.2
+
+    elif menu_state == "instructions":
+        screen.fill((34, 139, 34))  # Background color
+        
+        # Display how to play instructions
+        draw_how_to_play()
+        
+        # Back button to return to options menu
+        if back_button.draw(screen):
+            menu_state = "options"  # Return to options menu
+            button_sound.play()
 
     elif menu_state == "game":
         if game_over is not True and game_paused is not True:
