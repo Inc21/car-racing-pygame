@@ -6,7 +6,9 @@ class Button():
 	def __init__(self, x, y, image, scale):
 		width = image.get_width()
 		height = image.get_height()
-		self.image = pygame.transform.scale(image, (int(width * scale), int(height * scale)))
+		scaled_width = int(width * scale)
+		scaled_height = int(height * scale)
+		self.image = pygame.transform.scale(image, (scaled_width, scaled_height))
 		self.rect = self.image.get_rect()
 		self.rect.topleft = (x, y)
 		self.clicked = False
@@ -18,7 +20,7 @@ class Button():
 
 		# check mouseover and clicked conditions
 		if self.rect.collidepoint(pos):
-			if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False:
+			if pygame.mouse.get_pressed()[0] == 1 and not self.clicked:
 				self.clicked = True
 				action = True
 

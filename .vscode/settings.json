@@ -1,7 +1,14 @@
 {
     "cSpell.words": [
+        "centerx",
         "collidepoint",
+        "colliderect",
+        "gameplay",
+        "highscore",
+        "highscores",
         "KEYDOWN",
-        "roadmark"
+        "lowest",
+        "roadmark",
+        "spacebar"
     ]
 }
