@@ -11,6 +11,7 @@ from pygame.locals import (
     QUIT, KEYDOWN, K_LEFT, K_RIGHT, K_a, K_d
 )
 import textwrap  # Make sure to import the textwrap module
+import datetime  # Import datetime module for timestamps
 
 pygame.init()
 
@@ -178,8 +179,7 @@ LANE_CHANGE_SPEED = 12  # Increased from 8
 
 # Define car dimensions
 CAR_WIDTH = 105  # All cars are 105px wide
-PLAYER_HEIGHT = 250  # Player car is 250px high
-ENEMY_HEIGHT = 240  # Enemy cars are 240px high
+CAR_HEIGHT = 240  # All cars are 240px high
 
 # Adjust collision box size (make it slightly smaller than actual car for better gameplay)
 COLLISION_MARGIN_X = 15  # Pixels to subtract from each side
@@ -194,6 +194,13 @@ def load_highscores():
         return []  # Return empty list if file doesn't exist or is invalid
 
 
+# Function to clear the high score list
+def clear_highscores():
+    with open('highscores.json', 'w') as f:
+        json.dump([], f)  # Write an empty list to clear the file
+
+
+# Modify the save_highscore function to include a timestamp
 def save_highscore(score_data):
     username, score = score_data
     # Don't save if player only reached level 1
@@ -201,8 +208,12 @@ def save_highscore(score_data):
         return
         
     highscores = load_highscores()
-    # Create a new dictionary for the current score
-    new_score = {"name": username, "score": score}
+    # Create a new dictionary for the current score with timestamp
+    new_score = {
+        "name": username,
+        "score": score,
+        "timestamp": datetime.datetime.now().strftime("%d-%m-%y %H:%M")  # Add timestamp in DD-MM-YY HH:MM format
+    }
     
     # If highscores is empty or not a list, initialize it
     if not isinstance(highscores, list):
@@ -503,6 +514,23 @@ def update_toggle_images():
 # Call this function initially to set the correct images
 update_toggle_images()
 
+# Function to draw text with rainbow colors
+def draw_rainbow_text(text, font, x, y):
+    colors = [
+        (255, 0, 0),    # Red
+        (255, 127, 0),  # Orange
+        (255, 255, 0),  # Yellow
+        (0, 255, 0),    # Green
+        (0, 0, 255),    # Blue
+        (75, 0, 130),   # Indigo
+        (148, 0, 211)    # Violet
+    ]
+    
+    for i, char in enumerate(text):
+        color = colors[i % len(colors)]  # Cycle through colors
+        char_surface = font.render(char, True, color)
+        screen.blit(char_surface, (x + i * char_surface.get_width(), y))
+
 while run:
     screen.fill((34, 139, 34))
 
@@ -574,32 +602,28 @@ while run:
 
     elif menu_state == "highscore":
         play_menu_music()
-        # Center and capitalize the title
-        draw_text("HIGH SCORES", font, text_col, width//2 - 120, 50)
+        # Draw highscore screen
+        draw_text("Highscores", font, text_col, width//2 - 100, 50)
         
         # Reload highscores each time we display them
         current_highscores = load_highscores()
         
         for i, score in enumerate(current_highscores):
-            y_pos = 150 + (i * 50)
+            y_pos = 150 + (i * 50)  # Space out the scores
             # Safely access score data with get() method
             name = score.get('name', 'Unknown')
             score_val = score.get('score', 0)
-            score_text = f"{i+1}. {name}: Level {score_val}"
-            # Center each score entry
-            text_width = font.size(score_text)[0]  # Get width of text
-            x_pos = width//2 - text_width//2  # Calculate center position
-            draw_text(score_text, font, text_col, x_pos, y_pos)
+            timestamp = score.get('timestamp', 'N/A')  # Get timestamp
+            
+            # Draw the name in rainbow colors
+            score_text = f"{i+1}. {name}: Level {score_val} at {timestamp}"  # Include timestamp
+            
+            # Draw the score and timestamp
+            draw_text(score_text, font, text_col, width//2 - 350, y_pos)
         
         if back_button.draw(screen):
             menu_state = "startup"
             button_sound.play()
-            # Reset game state when returning to main menu
-            game_over = False
-            game_over_sound_played = False
-            speed = 1
-            car_loc.center = left_lane, height*0.8
-            car2_loc.center = right_lane, height*0.2
 
     elif menu_state == "instructions":
         screen.fill((34, 139, 34))  # Background color
@@ -694,14 +718,14 @@ while run:
                 car_loc.x + COLLISION_MARGIN_X,
                 car_loc.y + COLLISION_MARGIN_Y,
                 CAR_WIDTH - (COLLISION_MARGIN_X * 2),
-                PLAYER_HEIGHT - (COLLISION_MARGIN_Y * 2)
+                CAR_HEIGHT - (COLLISION_MARGIN_Y * 2)
             )
 
             car2_rect = pygame.Rect(
                 car2_loc.x + COLLISION_MARGIN_X,
                 car2_loc.y + COLLISION_MARGIN_Y,
                 CAR_WIDTH - (COLLISION_MARGIN_X * 2),
-                ENEMY_HEIGHT - (COLLISION_MARGIN_Y * 2)
+                CAR_HEIGHT - (COLLISION_MARGIN_Y * 2)
             )
 
             # Check for collision between the two rectangles
@@ -714,13 +738,25 @@ while run:
                 
                 # More precise collision response
                 if car2_loc.centery < car_loc.centery:  # Enemy is above player
-                    car_loc.top = car2_loc.bottom + COLLISION_MARGIN_Y
-                elif car2_loc.centery > car_loc.centery:  # Enemy is below player
                     car_loc.bottom = car2_loc.top - COLLISION_MARGIN_Y
+                elif car2_loc.centery > car_loc.centery:  # Enemy is below player
+                    car_loc.top = car2_loc.bottom + COLLISION_MARGIN_Y
                 elif car2_loc.centerx < car_loc.centerx:  # Enemy is to the left
-                    car_loc.left = car2_loc.right + COLLISION_MARGIN_X
-                else:  # Enemy is to the right
                     car_loc.right = car2_loc.left - COLLISION_MARGIN_X
+                else:  # Enemy is to the right
+                    car_loc.left = car2_loc.right + COLLISION_MARGIN_X
+                
+                # Ensure cars are not overlapping
+                if car_rect.colliderect(car2_rect):
+                    # Move the player car out of the collision
+                    if car2_loc.centery < car_loc.centery:  # Enemy is above player
+                        car_loc.bottom = car2_loc.top - COLLISION_MARGIN_Y
+                    elif car2_loc.centery > car_loc.centery:  # Enemy is below player
+                        car_loc.top = car2_loc.bottom + COLLISION_MARGIN_Y
+                    elif car2_loc.centerx < car_loc.centerx:  # Enemy is to the left
+                        car_loc.right = car2_loc.left - COLLISION_MARGIN_X
+                    else:  # Enemy is to the right
+                        car_loc.left = car2_loc.right + COLLISION_MARGIN_X
                 
                 game_over = True
                 if crash_sound:
@@ -785,9 +821,8 @@ while run:
                 instruction_width = font.size(instruction_text)[0]
                 
                 draw_text(title_text, font, text_col, width//2 - title_width//2, 300)
-                draw_text(username + "_", font, text_col, width//2 - name_width//2, 350)
-                draw_text(instruction_text, font, text_col, 
-                         width//2 - instruction_width//2, 400)
+                draw_rainbow_text(username + "_", font, width//2 - name_width//2, 350)  # Draw username in rainbow colors
+                draw_text(instruction_text, font, text_col, width//2 - instruction_width//2, 400)
             else:
                 # Center the score text and stack buttons vertically
                 draw_text(f"Final Score: Level {speed}", font, text_col, width//2 - 150, 300)
