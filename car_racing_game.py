@@ -22,6 +22,11 @@ road_w = int(width/1.6)
 roadmark_w = int(width/80)
 right_lane = width/2 + road_w/4
 left_lane = width/2 - road_w/4
+
+# Define road boundaries
+road_x = width / 2 - road_w / 2
+road_right_x = road_x + road_w  # Correctly calculate road_right_x
+
 speed = 1
 text_col = (255, 255, 255)
 
@@ -114,8 +119,7 @@ def init_scenery():
         })
         
         # Right side - independent placement
-        scenery_type = random.choice(["tree", "tree2", "bush"])
-        x_offset = random.randint(50, 120)  # Adjusted for right side
+        scenery_type = random.choice(["tree", "tree2", "bush"])  # Correct selection
         right_scenery.append({
             "type": scenery_type,
             "pos": (width//2 + road_w//2 + x_offset, y)
@@ -173,8 +177,9 @@ road_y = 0  # Track road marking position
 base_speed = 2  # Lower initial speed
 marking_gap = 100  # Increased gap between markings (was 50)
 car_angle = 0  # Current car rotation angle
-TILT_ANGLE = 10  # Reduced from 15
-TILT_SPEED = 1.5  # Slightly increased from 1.2
+TILT_ANGLE = 15  # Maximum tilt angle in degrees
+TILT_SPEED = 3    # Speed at which the car tilts
+DECAY_RATE = 2    # Rate at which the car returns to upright position
 LANE_CHANGE_SPEED = 12  # Increased from 8
 
 # Define car dimensions
@@ -182,8 +187,11 @@ CAR_WIDTH = 105  # All cars are 105px wide
 CAR_HEIGHT = 240  # All cars are 240px high
 
 # Adjust collision box size (make it slightly smaller than actual car for better gameplay)
-COLLISION_MARGIN_X = 15  # Pixels to subtract from each side
-COLLISION_MARGIN_Y = 20  # Pixels to subtract from top/bottom
+COLLISION_MARGIN_X = 100  # Increased pixels to subtract for tighter collision
+COLLISION_MARGIN_Y = 240  # Pixels to subtract from top/bottom
+
+# Add a variable to track if the car is on the course
+on_course = True  # Initially, the car is on the course
 
 # Before the game variables section, add these functions
 def load_highscores():
@@ -258,7 +266,7 @@ def draw_text(text, font, text_col, x, y):
 pygame.draw.rect(
     screen,
     (50, 50, 50),
-    (width/2-road_w/2, 0, road_w, height)
+    (road_x, 0, road_w, height)
 )
 
 # draw the center line
@@ -271,13 +279,13 @@ pygame.draw.rect(
 pygame.draw.rect(
     screen,
     (255, 255, 255),
-    (width/2+road_w/2 - roadmark_w*3, 0, roadmark_w, height))
+    (road_x + road_w - roadmark_w*3, 0, roadmark_w, height))
 
 # draw left road mark
 pygame.draw.rect(
     screen,
     (255, 255, 255),
-    (width/2-road_w/2 + roadmark_w*2, 0, roadmark_w, height))
+    (road_x + roadmark_w*2, 0, roadmark_w, height))
 
 # apply the changes
 pygame.display.update()
@@ -531,6 +539,22 @@ def draw_rainbow_text(text, font, x, y):
         char_surface = font.render(char, True, color)
         screen.blit(char_surface, (x + i * char_surface.get_width(), y))
 
+# Draw rotated car based on angle
+def draw_rotated_car(surface, car_image, car_rect, angle):
+    rotated_image = pygame.transform.rotate(car_image, angle)
+    rotated_rect = rotated_image.get_rect(center=car_rect.center)
+    surface.blit(rotated_image, rotated_rect.topleft)
+
+# Draw debug visuals (for development purposes)
+def draw_debug(car_rect, car2_rect):
+    # Draw road boundaries
+    pygame.draw.rect(screen, (0, 255, 0), (road_x, 0, 5, height))       # Left boundary
+    pygame.draw.rect(screen, (0, 255, 0), (road_right_x - 5, 0, 5, height))  # Right boundary
+
+    # Draw collision rectangles
+    pygame.draw.rect(screen, (255, 0, 0), car_rect, 2)    # Player car collision rect
+    pygame.draw.rect(screen, (0, 0, 255), car2_rect, 2)   # Enemy car collision rect
+
 while run:
     screen.fill((34, 139, 34))
 
@@ -582,18 +606,30 @@ while run:
         
         # Draw toggle buttons for music
         draw_text("Music:", font, text_col, width//2 - 280, 260)  # Label for music toggle
-        music_toggle.rect.x = width//2 - -50  # Position music toggle button to the right of the label
+        music_toggle.rect.x = width//2 + 50  # Position music toggle button to the right of the label
         music_toggle.rect.y = 250  # Align with the label
         if music_toggle.draw(screen):
             music_enabled = not music_enabled  # Toggle music state
+            if music_enabled and menu_music and not menu_music.get_num_channels():
+                menu_music.play(-1)
+            elif not music_enabled and menu_music:
+                menu_music.stop()
             update_toggle_images()  # Update button image
 
         # Draw toggle buttons for sound effects
         draw_text("Sound Effects:", font, text_col, width//2 - 280, 370)  # Adjusted Y position
-        sfx_toggle.rect.x = width//2 - -50  # Position sound effects toggle button to the right of the label
+        sfx_toggle.rect.x = width//2 + 50  # Position sound effects toggle button to the right of the label
         sfx_toggle.rect.y = 360  # Increased Y position for more space
         if sfx_toggle.draw(screen):
             sfx_enabled = not sfx_enabled  # Toggle sound effects state
+            if not sfx_enabled:
+                # Stop all sound effects if needed
+                if button_sound:
+                    button_sound.stop()
+                if crash_sound:
+                    crash_sound.stop()
+                if enemy1_pass_sound:
+                    enemy1_pass_sound.stop()
             update_toggle_images()  # Update button image
 
         if back_button.draw(screen):
@@ -615,11 +651,25 @@ while run:
             score_val = score.get('score', 0)
             timestamp = score.get('timestamp', 'N/A')  # Get timestamp
             
-            # Draw the name in rainbow colors
-            score_text = f"{i+1}. {name}: Level {score_val} at {timestamp}"  # Include timestamp
+            # Define x positions for each column
+            rank_x = width//2 - 350
+            name_x = rank_x + 50
+            score_x = name_x + 250
+            timestamp_x = score_x + 150
             
-            # Draw the score and timestamp
-            draw_text(score_text, font, text_col, width//2 - 350, y_pos)
+            # Draw rank
+            rank_text = f"{i+1}."
+            draw_text(rank_text, font, text_col, rank_x, y_pos)
+            
+            # Draw name
+            draw_text(name, font, text_col, name_x, y_pos)
+            
+            # Draw score
+            score_text = f"Level {score_val}"
+            draw_text(score_text, font, text_col, score_x, y_pos)
+            
+            # Draw timestamp
+            draw_text(timestamp, font, text_col, timestamp_x, y_pos)
         
         if back_button.draw(screen):
             menu_state = "startup"
@@ -661,7 +711,7 @@ while run:
             pygame.draw.rect(
                 screen,
                 (50, 50, 50),
-                (width/2-road_w/2, 0, road_w, height)
+                (road_x, 0, road_w, height)
             )
 
             # Draw moving center lines with gaps (dashed)
@@ -670,19 +720,19 @@ while run:
                 pygame.draw.rect(
                     screen,
                     (255, 240, 60),
-                    (width/2-roadmark_w/2, y_pos, roadmark_w, 40)
+                    (width//2 - roadmark_w//2, y_pos, roadmark_w, 40)
                 )
 
             # Draw continuous side lines
             pygame.draw.rect(
                 screen,
                 (255, 255, 255),
-                (width/2+road_w/2 - roadmark_w*3, 0, roadmark_w, height)
+                (road_x + road_w - roadmark_w*3, 0, roadmark_w, height)
             )
             pygame.draw.rect(
                 screen,
                 (255, 255, 255),
-                (width/2-road_w/2 + roadmark_w*2, 0, roadmark_w, height)
+                (road_x + roadmark_w*2, 0, roadmark_w, height)
             )
 
             # Draw and update scenery
@@ -728,6 +778,69 @@ while run:
                 CAR_HEIGHT - (COLLISION_MARGIN_Y * 2)
             )
 
+            # Handle events
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    run = False
+                if event.type == KEYDOWN:
+                    if game_over and entering_username:
+                        handle_username_input(event)
+                    elif menu_state == "game":  # Only handle game controls if not entering username
+                        if event.key in [K_LEFT, K_a]:
+                            # Move left: decrement centerx by lane change speed
+                            car_loc.centerx -= LANE_CHANGE_SPEED
+                        elif event.key in [K_RIGHT, K_d]:
+                            # Move right: increment centerx by lane change speed
+                            car_loc.centerx += LANE_CHANGE_SPEED
+                        if event.key == pygame.K_SPACE:
+                            game_paused = True
+                            if current_music:
+                                current_music.stop()
+                            if car_driving_sound:
+                                car_driving_sound.stop()
+                            play_menu_music()  # Switch to menu music when paused
+
+            # Only handle movement if the game is not over
+            if not game_over:
+                # Handle continuous movement
+                keys = pygame.key.get_pressed()
+                if keys[K_LEFT] or keys[K_a]:
+                    car_loc.centerx -= LANE_CHANGE_SPEED
+                    # Tilt car to the left
+                    car_angle += TILT_SPEED
+                    if car_angle > TILT_ANGLE:
+                        car_angle = TILT_ANGLE
+                elif keys[K_RIGHT] or keys[K_d]:
+                    car_loc.centerx += LANE_CHANGE_SPEED
+                    # Tilt car to the right
+                    car_angle -= TILT_SPEED
+                    if car_angle < -TILT_ANGLE:
+                        car_angle = -TILT_ANGLE
+                else:
+                    # Gradually return the car to upright position
+                    if car_angle > 0:
+                        car_angle -= DECAY_RATE
+                        if car_angle < 0:
+                            car_angle = 0
+                    elif car_angle < 0:
+                        car_angle += DECAY_RATE
+                        if car_angle > 0:
+                            car_angle = 0
+
+                # Prevent the car from moving off the screen
+                if car_loc.left < road_x:
+                    car_loc.left = road_x
+                if car_loc.right > road_right_x:
+                    car_loc.right = road_right_x
+
+            # Check if the car is off the tarmac
+            if car_rect.left < road_x or car_rect.right > road_right_x:
+                on_course = False  # The car is off the course
+                print("Car is off the course!")
+            else:
+                on_course = True  # The car is on the course
+                print("Car is on the course.")
+
             # Check for collision between the two rectangles
             if car_rect.colliderect(car2_rect):
                 # Stop sounds on collision
@@ -736,28 +849,18 @@ while run:
                 if current_music:
                     current_music.stop()
                 
-                # More precise collision response
-                if car2_loc.centery < car_loc.centery:  # Enemy is above player
-                    car_loc.bottom = car2_loc.top - COLLISION_MARGIN_Y
-                elif car2_loc.centery > car_loc.centery:  # Enemy is below player
-                    car_loc.top = car2_loc.bottom + COLLISION_MARGIN_Y
-                elif car2_loc.centerx < car_loc.centerx:  # Enemy is to the left
-                    car_loc.right = car2_loc.left - COLLISION_MARGIN_X
-                else:  # Enemy is to the right
-                    car_loc.left = car2_loc.right + COLLISION_MARGIN_X
+                # Set game_over to True and play crash sound
+                game_over = True
+                if crash_sound:
+                    crash_sound.play()
                 
-                # Ensure cars are not overlapping
-                if car_rect.colliderect(car2_rect):
-                    # Move the player car out of the collision
-                    if car2_loc.centery < car_loc.centery:  # Enemy is above player
-                        car_loc.bottom = car2_loc.top - COLLISION_MARGIN_Y
-                    elif car2_loc.centery > car_loc.centery:  # Enemy is below player
-                        car_loc.top = car2_loc.bottom + COLLISION_MARGIN_Y
-                    elif car2_loc.centerx < car_loc.centerx:  # Enemy is to the left
-                        car_loc.right = car2_loc.left - COLLISION_MARGIN_X
-                    else:  # Enemy is to the right
-                        car_loc.left = car2_loc.right + COLLISION_MARGIN_X
+                # Optional: Add visual feedback
+                # e.g., flash screen or display "Crash!"
                 
+                # Optionally, reset car position or handle highscore
+
+            # Check if the car is off the tarmac and trigger a crash
+            if not on_course:
                 game_over = True
                 if crash_sound:
                     crash_sound.play()
@@ -767,7 +870,10 @@ while run:
             # Draw cars
             screen.blit(car2, car2_loc)
             draw_rotated_car(screen, car, car_loc, car_angle)
-            
+
+            # Draw debug visuals (optional, remove after testing)
+            draw_debug(car_rect, car2_rect)
+
             # Draw pause instruction text last (on top of everything)
             small_font = pygame.font.SysFont("arialblack", 20)
             pause_text1 = "Press"
@@ -821,7 +927,7 @@ while run:
                 instruction_width = font.size(instruction_text)[0]
                 
                 draw_text(title_text, font, text_col, width//2 - title_width//2, 300)
-                draw_rainbow_text(username + "_", font, width//2 - name_width//2, 350)  # Draw username in rainbow colors
+                draw_text(username + "_", font, text_col, width//2 - name_width//2, 350)  # Draw username in standard color
                 draw_text(instruction_text, font, text_col, width//2 - instruction_width//2, 400)
             else:
                 # Center the score text and stack buttons vertically
@@ -870,126 +976,6 @@ while run:
             if game_over and entering_username:
                 handle_username_input(event)
             elif menu_state == "game":  # Only handle game controls if not entering username
-                if event.key in [K_LEFT, K_a] and car_loc.centerx == right_lane:
-                    # Start moving left
-                    target_x = left_lane
-                    current_x = car_loc.centerx
-                    # Smoother movement
-                    while current_x > target_x:
-                        current_x -= LANE_CHANGE_SPEED
-                        car_loc.centerx = max(current_x, target_x)
-                        car_angle = TILT_ANGLE
-                        
-                        # Update road position during turn
-                        road_y = (road_y + current_speed) % height
-                        
-                        # Redraw everything
-                        screen.fill((34, 139, 34))
-                        
-                        # Draw road
-                        pygame.draw.rect(
-                            screen,
-                            (50, 50, 50),
-                            (width/2-road_w/2, 0, road_w, height)
-                        )
-                        
-                        # Draw moving center lines
-                        for i in range(-1, height // marking_gap + 2):
-                            y_pos = ((i * marking_gap) + road_y) % height
-                            pygame.draw.rect(
-                                screen,
-                                (255, 240, 60),
-                                (width/2-roadmark_w/2, y_pos, roadmark_w, 40)
-                            )
-                        
-                        # Draw continuous side lines
-                        pygame.draw.rect(
-                            screen,
-                            (255, 255, 255),
-                            (width/2+road_w/2 - roadmark_w*3, 0, roadmark_w, height)
-                        )
-                        pygame.draw.rect(
-                            screen,
-                            (255, 255, 255),
-                            (width/2-road_w/2 + roadmark_w*2, 0, roadmark_w, height)
-                        )
-                        
-                        # Draw scenery before cars
-                        draw_scenery()
-                        
-                        # Move and draw enemy car
-                        car2_loc.y += current_speed * 1.2
-                        if car2_loc.y > height:
-                            if random.randint(0, 1):
-                                car2_loc.center = (left_lane, -car2_loc.height)
-                            else:
-                                car2_loc.center = (right_lane, -car2_loc.height)
-                        screen.blit(car2, car2_loc)
-                        draw_rotated_car(screen, car, car_loc, car_angle)
-                        show_level()
-                        
-                        pygame.display.update()
-                        clock.tick(60)
-                if event.key in [K_RIGHT, K_d] and car_loc.centerx == left_lane:
-                    # Start moving right
-                    target_x = right_lane
-                    current_x = car_loc.centerx
-                    # Smoother movement
-                    while current_x < target_x:
-                        current_x += LANE_CHANGE_SPEED
-                        car_loc.centerx = min(current_x, target_x)
-                        car_angle = -TILT_ANGLE
-                        
-                        # Update road position during turn
-                        road_y = (road_y + current_speed) % height
-                        
-                        # Redraw everything
-                        screen.fill((34, 139, 34))
-                        
-                        # Draw road
-                        pygame.draw.rect(
-                            screen,
-                            (50, 50, 50),
-                            (width/2-road_w/2, 0, road_w, height)
-                        )
-                        
-                        # Draw moving center lines
-                        for i in range(-1, height // marking_gap + 2):
-                            y_pos = ((i * marking_gap) + road_y) % height
-                            pygame.draw.rect(
-                                screen,
-                                (255, 240, 60),
-                                (width/2-roadmark_w/2, y_pos, roadmark_w, 40)
-                            )
-                        
-                        # Draw continuous side lines
-                        pygame.draw.rect(
-                            screen,
-                            (255, 255, 255),
-                            (width/2+road_w/2 - roadmark_w*3, 0, roadmark_w, height)
-                        )
-                        pygame.draw.rect(
-                            screen,
-                            (255, 255, 255),
-                            (width/2-road_w/2 + roadmark_w*2, 0, roadmark_w, height)
-                        )
-                        
-                        # Draw scenery before cars
-                        draw_scenery()
-                        
-                        # Move and draw enemy car
-                        car2_loc.y += current_speed * 1.2
-                        if car2_loc.y > height:
-                            if random.randint(0, 1):
-                                car2_loc.center = (left_lane, -car2_loc.height)
-                            else:
-                                car2_loc.center = (right_lane, -car2_loc.height)
-                        screen.blit(car2, car2_loc)
-                        draw_rotated_car(screen, car, car_loc, car_angle)
-                        show_level()
-                        
-                        pygame.display.update()
-                        clock.tick(60)
                 if event.key == pygame.K_SPACE:
                     game_paused = True
                     if current_music:
