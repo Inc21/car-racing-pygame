@@ -78,6 +78,9 @@ game_over_sound_played = False
 # set the font of the text
 font = pygame.font.SysFont("arialblack", 35)
 
+# Define dark green color for game over text
+dark_green_col = (0, 100, 0)
+
 # set the title of the window
 pygame.display.set_caption("Mustang Mayhem")
 
@@ -187,8 +190,8 @@ CAR_WIDTH = 105  # All cars are 105px wide
 CAR_HEIGHT = 240  # All cars are 240px high
 
 # Adjust collision box size (make it slightly smaller than actual car for better gameplay)
-COLLISION_MARGIN_X = 100  # Increased pixels to subtract for tighter collision
-COLLISION_MARGIN_Y = 240  # Pixels to subtract from top/bottom
+COLLISION_MARGIN_X = 105   # Reduced margin for accurate collision detection
+COLLISION_MARGIN_Y = 240   # Reduced margin for accurate collision detection
 
 # Add a variable to track if the car is on the course
 on_course = True  # Initially, the car is on the course
@@ -258,6 +261,17 @@ def show_level():
 def draw_text(text, font, text_col, x, y):
     img = font.render(text, True, text_col)
     screen.blit(img, (x, y))
+
+
+def draw_text_with_outline(text, font, text_col, x, y, outline_col=(0, 0, 0)):
+    # Draw outline
+    outline_offset = 2  # Offset for outline
+    for dx in [-outline_offset, 0, outline_offset]:
+        for dy in [-outline_offset, 0, outline_offset]:
+            screen.blit(font.render(text, True, outline_col), (x + dx, y + dy))
+    
+    # Draw main text
+    screen.blit(font.render(text, True, text_col), (x, y))
 
 
 # draw graphics
@@ -432,37 +446,25 @@ def draw_glowing_rainbow_text(text, font, x, y, animation_counter):
         current_x += text_surface.get_width()
 
 
-# Improved crash detection using rectangles with adjusted collision boxes
+# Modified crash detection using rectangles with adjusted collision boxes
 # Reduce width of collision boxes to match visible car parts
 car_width_adjust = 10  # Pixels to subtract from each side
 car_height_adjust = 5  # Pixels to subtract from top/bottom
 
-# Add this function before the game loop
-def draw_rotated_car(screen, car_image, car_location, angle):
+# Keep only one definition of draw_rotated_car
+def draw_rotated_car(surface, car_image, car_rect, angle):
     """
     Draw the car with rotation.
     
     Args:
-        screen: pygame display surface
+        surface: pygame display surface
         car_image: the car image to draw
-        car_location: rectangle defining car position
+        car_rect: rectangle defining car position
         angle: rotation angle in degrees
     """
-    # Only rotate if there's an angle
-    if angle != 0:
-        # Get the center before rotation
-        center = car_location.center
-        # Rotate the car image
-        rotated_car = pygame.transform.rotate(car_image, angle)
-        # Get the new rectangle
-        new_rect = rotated_car.get_rect()
-        # Set the center of the new rectangle to the old center
-        new_rect.center = center
-        # Draw the rotated car
-        screen.blit(rotated_car, new_rect)
-    else:
-        # Draw the car without rotation
-        screen.blit(car_image, car_location)
+    rotated_image = pygame.transform.rotate(car_image, angle)
+    rotated_rect = rotated_image.get_rect(center=car_rect.center)
+    surface.blit(rotated_image, rotated_rect.topleft)
 
 
 # Modify the draw_scenery function to be smoother
@@ -539,21 +541,16 @@ def draw_rainbow_text(text, font, x, y):
         char_surface = font.render(char, True, color)
         screen.blit(char_surface, (x + i * char_surface.get_width(), y))
 
-# Draw rotated car based on angle
-def draw_rotated_car(surface, car_image, car_rect, angle):
-    rotated_image = pygame.transform.rotate(car_image, angle)
-    rotated_rect = rotated_image.get_rect(center=car_rect.center)
-    surface.blit(rotated_image, rotated_rect.topleft)
+# Load crash image for visual feedback
+crash_img = pygame.image.load("images/cars/crash.png").convert_alpha()
+crash_animation = False
+crash_animation_frames = 5  # Number of frames for crash animation
+crash_current_frame = 0
+crash_animation_speed = 5  # Frames per second for the animation
+crash_clock = pygame.time.Clock()
 
-# Draw debug visuals (for development purposes)
-def draw_debug(car_rect, car2_rect):
-    # Draw road boundaries
-    pygame.draw.rect(screen, (0, 255, 0), (road_x, 0, 5, height))       # Left boundary
-    pygame.draw.rect(screen, (0, 255, 0), (road_right_x - 5, 0, 5, height))  # Right boundary
-
-    # Draw collision rectangles
-    pygame.draw.rect(screen, (255, 0, 0), car_rect, 2)    # Player car collision rect
-    pygame.draw.rect(screen, (0, 0, 255), car2_rect, 2)   # Enemy car collision rect
+# Scale crash image to fit the screen
+crash_img = pygame.transform.scale(crash_img, (width, height))
 
 while run:
     screen.fill((34, 139, 34))
@@ -639,37 +636,36 @@ while run:
     elif menu_state == "highscore":
         play_menu_music()
         # Draw highscore screen
-        draw_text("Highscores", font, text_col, width//2 - 100, 50)
+        draw_text_with_outline("HIGH SCORES", font, (255, 255, 255), width//2 - 100, 50)  # White text with black outline
         
         # Reload highscores each time we display them
         current_highscores = load_highscores()
         
         for i, score in enumerate(current_highscores):
             y_pos = 150 + (i * 50)  # Space out the scores
-            # Safely access score data with get() method
             name = score.get('name', 'Unknown')
             score_val = score.get('score', 0)
             timestamp = score.get('timestamp', 'N/A')  # Get timestamp
-            
+
             # Define x positions for each column
             rank_x = width//2 - 350
             name_x = rank_x + 50
             score_x = name_x + 250
             timestamp_x = score_x + 150
-            
-            # Draw rank
+
+            # Draw rank with outline
             rank_text = f"{i+1}."
-            draw_text(rank_text, font, text_col, rank_x, y_pos)
-            
-            # Draw name
-            draw_text(name, font, text_col, name_x, y_pos)
-            
-            # Draw score
+            draw_text_with_outline(rank_text, font, (255, 255, 255), rank_x, y_pos)
+
+            # Draw name with outline
+            draw_text_with_outline(name, font, (255, 255, 255), name_x, y_pos)
+
+            # Draw score with outline
             score_text = f"Level {score_val}"
-            draw_text(score_text, font, text_col, score_x, y_pos)
-            
-            # Draw timestamp
-            draw_text(timestamp, font, text_col, timestamp_x, y_pos)
+            draw_text_with_outline(score_text, font, (255, 255, 255), score_x, y_pos)
+
+            # Draw timestamp with outline
+            draw_text_with_outline(timestamp, font, (255, 255, 255), timestamp_x, y_pos)
         
         if back_button.draw(screen):
             menu_state = "startup"
@@ -720,7 +716,7 @@ while run:
                 pygame.draw.rect(
                     screen,
                     (255, 240, 60),
-                    (width//2 - roadmark_w//2, y_pos, roadmark_w, 40)
+                    (width//2 - roadmark_w/2, y_pos, roadmark_w, 40)
                 )
 
             # Draw continuous side lines
@@ -800,43 +796,34 @@ while run:
                                 car_driving_sound.stop()
                             play_menu_music()  # Switch to menu music when paused
 
-            # Only handle movement if the game is not over
-            if not game_over:
-                # Handle continuous movement
-                keys = pygame.key.get_pressed()
-                if keys[K_LEFT] or keys[K_a]:
-                    car_loc.centerx -= LANE_CHANGE_SPEED
-                    # Tilt car to the left
-                    car_angle += TILT_SPEED
-                    if car_angle > TILT_ANGLE:
-                        car_angle = TILT_ANGLE
-                elif keys[K_RIGHT] or keys[K_d]:
-                    car_loc.centerx += LANE_CHANGE_SPEED
-                    # Tilt car to the right
-                    car_angle -= TILT_SPEED
-                    if car_angle < -TILT_ANGLE:
-                        car_angle = -TILT_ANGLE
-                else:
-                    # Gradually return the car to upright position
-                    if car_angle > 0:
-                        car_angle -= DECAY_RATE
-                        if car_angle < 0:
-                            car_angle = 0
-                    elif car_angle < 0:
-                        car_angle += DECAY_RATE
-                        if car_angle > 0:
-                            car_angle = 0
-
-                # Prevent the car from moving off the screen
-                if car_loc.left < road_x:
-                    car_loc.left = road_x
-                if car_loc.right > road_right_x:
-                    car_loc.right = road_right_x
+            # Handle continuous movement
+            keys = pygame.key.get_pressed()
+            if keys[K_LEFT] or keys[K_a]:
+                car_loc.centerx -= LANE_CHANGE_SPEED
+                # Tilt car to the left
+                car_angle += TILT_SPEED
+                if car_angle > TILT_ANGLE:
+                    car_angle = TILT_ANGLE
+            elif keys[K_RIGHT] or keys[K_d]:
+                car_loc.centerx += LANE_CHANGE_SPEED
+                # Tilt car to the right
+                car_angle -= TILT_SPEED
+                if car_angle < -TILT_ANGLE:
+                    car_angle = -TILT_ANGLE
 
             # Check if the car is off the tarmac
             if car_rect.left < road_x or car_rect.right > road_right_x:
                 on_course = False  # The car is off the course
                 print("Car is off the course!")
+                game_over = True  # Set game over state
+                if crash_sound:
+                    crash_sound.play()
+                # Flash the screen red
+                for _ in range(5):
+                    screen.fill((255, 0, 0))
+                    pygame.display.flip()
+                    pygame.time.delay(70)
+                screen.fill((34, 139, 34))  # Restore background
             else:
                 on_course = True  # The car is on the course
                 print("Car is on the course.")
@@ -853,26 +840,12 @@ while run:
                 game_over = True
                 if crash_sound:
                     crash_sound.play()
-                
-                # Optional: Add visual feedback
-                # e.g., flash screen or display "Crash!"
-                
-                # Optionally, reset car position or handle highscore
-
-            # Check if the car is off the tarmac and trigger a crash
-            if not on_course:
-                game_over = True
-                if crash_sound:
-                    crash_sound.play()
 
             show_level()
 
             # Draw cars
             screen.blit(car2, car2_loc)
             draw_rotated_car(screen, car, car_loc, car_angle)
-
-            # Draw debug visuals (optional, remove after testing)
-            draw_debug(car_rect, car2_rect)
 
             # Draw pause instruction text last (on top of everything)
             small_font = pygame.font.SysFont("arialblack", 20)
@@ -915,9 +888,14 @@ while run:
                 game_over_sound_played = True
                 entering_username = score_qualifies(speed)
                 username = ""
+                crash_animation = True  # Start crash animation
             
-            draw_text("Game Over", font, text_col, 300, 250)
+            # Replace Game Over background with crash.png
+            screen.blit(crash_img, (0, 0))
             
+            # Display crash animation
+            # Optionally, remove the crash animation blitting if not needed
+
             if entering_username:
                 # Center all text elements
                 title_text = "Enter your name:"
@@ -926,12 +904,12 @@ while run:
                 instruction_text = "Press ENTER when done"
                 instruction_width = font.size(instruction_text)[0]
                 
-                draw_text(title_text, font, text_col, width//2 - title_width//2, 300)
-                draw_text(username + "_", font, text_col, width//2 - name_width//2, 350)  # Draw username in standard color
-                draw_text(instruction_text, font, text_col, width//2 - instruction_width//2, 400)
+                draw_text_with_outline(title_text, font, (255, 255, 255), width//2 - title_width//2, 300)  # Title with outline
+                draw_text_with_outline(username + "_", font, (255, 255, 255), width//2 - name_width//2, 350)  # Username with outline
+                draw_text_with_outline(instruction_text, font, (255, 255, 255), width//2 - instruction_width//2, 400)  # Instruction with outline
             else:
                 # Center the score text and stack buttons vertically
-                draw_text(f"Final Score: Level {speed}", font, text_col, width//2 - 150, 300)
+                draw_text_with_outline(f"Reached Level {speed}! Game Over", font, (255, 255, 255), width//2 - 250, 300)  # White text with black outline
                 
                 # Temporarily move buttons for game over screen
                 start_button_original_y = start_button.rect.y
