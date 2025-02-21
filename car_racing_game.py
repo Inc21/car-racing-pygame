@@ -388,61 +388,38 @@ def score_qualifies(score):
 
 
 # Near the top with other font definitions
-title_font = pygame.font.SysFont("arialblack", 70, bold=True)  # Bigger and bolder
+title_font = pygame.font.SysFont("arialblack", 60, bold=True)  # Bigger and bolder
 
-# Add this function after other drawing functions
-def draw_glowing_rainbow_text(text, font, x, y, animation_counter):
-    """Draw text with rainbow colors and glowing effect."""
-    colors = [
-        (255, 0, 0),    # Red
-        (255, 127, 0),  # Orange
-        (255, 255, 0),  # Yellow
-        (0, 255, 0),    # Green
-        (0, 0, 255),    # Blue
-        (75, 0, 130),   # Indigo
-        (148, 0, 211)   # Violet
-    ]
-    
+# Define a color palette for the title
+darker_blue = (23, 139, 224)  # Darker blue
+very_light_gray = (173, 180, 188)  # Very light gray
+
+# Update the draw_glowing_text function to apply the new styles
+def draw_glowing_text(text, font, x, y, animation_counter):
+    """Draw text with specific colors and glowing effect."""
     total_width = sum(font.size(letter)[0] for letter in text)
     
-    # Draw multiple layers for glow effect
-    glow_layers = 3  # Number of glow layers
-    for glow in range(glow_layers, -1, -1):
-        current_x = x - total_width//2
-        scale = 1 + (glow * 0.1)  # Increase size for outer layers
-        alpha = 255 - (glow * 60)  # Decrease opacity for outer layers
-        
-        for i, letter in enumerate(text):
-            color_index = i % len(colors)
-            base_color = colors[color_index]
-            
-            # Create glowing color (lighter version of base color)
-            glow_color = tuple(min(255, c + 100) for c in base_color)
-            
-            # Add wave animation
-            offset_y = math.sin(animation_counter + i * 0.5) * 15
-            
-            text_surface = font.render(letter, True, glow_color)
-            # Scale for glow effect
-            size = (int(text_surface.get_width() * scale), 
-                   int(text_surface.get_height() * scale))
-            glow_surface = pygame.transform.scale(text_surface, size)
-            
-            # Set transparency
-            glow_surface.set_alpha(alpha)
-            
-            # Position with wave offset
-            pos = (current_x, y + offset_y)
-            screen.blit(glow_surface, pos)
-            current_x += font.size(letter)[0]
-    
-    # Draw the main text on top
-    current_x = x - total_width//2
+    # Draw shadow
+    shadow_offset = 3  # Offset for shadow
+    shadow_color = (0, 0, 0)  # Black shadow
+    current_x = x - total_width // 2
+    for letter in text:
+        shadow_surface = font.render(letter, True, shadow_color)
+        screen.blit(shadow_surface, (current_x + shadow_offset, y + shadow_offset))
+        current_x += font.size(letter)[0]
+
+    # Draw main text with specified colors
+    current_x = x - total_width // 2
     for i, letter in enumerate(text):
-        color_index = i % len(colors)
-        offset_y = math.sin(animation_counter + i * 0.5) * 15
-        text_surface = font.render(letter, True, colors[color_index])
-        screen.blit(text_surface, (current_x, y + offset_y))
+        if letter == 'M' and i == text.index('MAYHEM'):  # First 'M' in 'MAYHEM'
+            color = very_light_gray
+        elif letter == 'G' and i == text.index('MUSTANG') + 6:  # Last 'G' in 'MUSTANG'
+            color = very_light_gray
+        else:
+            color = darker_blue  # Use the darker blue for other letters
+        
+        text_surface = font.render(letter, True, color)
+        screen.blit(text_surface, (current_x, y))
         current_x += text_surface.get_width()
 
 
@@ -564,10 +541,10 @@ while run:
         screen.blit(background_img, (0, 0))
         
         # Draw animated title with glow effect
-        draw_glowing_rainbow_text(
-            "Mustang Mayhem",
+        draw_glowing_text(
+            "MUSTANG MAYHEM",
             title_font,
-            width//2,
+            width // 2,
             80,
             animation_counter
         )
