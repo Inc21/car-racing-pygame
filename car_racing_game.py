@@ -317,7 +317,8 @@ car_loc.center = left_lane, height*0.8
 # load enemy cars
 enemy_1 = pygame.image.load("images/cars/enemy_1.png")
 enemy_2 = pygame.image.load("images/cars/enemy_2.png")
-enemy_cars = [enemy_1, enemy_2]  # List of enemy car images
+enemy_3 = pygame.image.load("images/cars/john_deere.png")
+enemy_cars = [enemy_1, enemy_2, enemy_3]  # List of enemy car images
 
 # Initialize enemy car with random image
 car2 = random.choice(enemy_cars)
@@ -325,26 +326,8 @@ car2_loc = car2.get_rect()
 car2_loc.center = right_lane, height*0.2
 
 counter = 0
-
 # game loop
 run = True
-
-# Update the adjust_music_speed function
-# def adjust_music_speed(level):
-#     global current_music
-#     if current_music:
-#         pygame.mixer.stop()
-#     # Play at increased speed based on level
-#     game_music_file = f"sounds/game_music_level_{min(level, 5)}.wav"
-    
-#     new_music = load_sound(game_music_file)
-#     if new_music:
-#         current_music = new_music
-#     elif game_music:  # Fallback to base game music if level variant not found
-#         current_music = game_music
-    
-#     if current_music:
-#         current_music.play()
 
 
 # After loading sounds, add this function
@@ -397,6 +380,7 @@ title_font = pygame.font.SysFont("arialblack", 60, bold=True)  # Bigger and bold
 # Define a color palette for the title
 darker_blue = (23, 139, 224)  # Darker blue
 very_light_gray = (173, 180, 188)  # Very light gray
+
 
 # Update the draw_glowing_text function to apply the new styles
 def draw_glowing_text(text, font, x, y, animation_counter):
@@ -497,13 +481,16 @@ def draw_how_to_play():
 music_enabled = True  # Music is enabled by default
 sfx_enabled = True    # Sound effects are enabled by default
 
+
 # Update the toggle button images based on the state
 def update_toggle_images():
     music_toggle.image = toggle_on_img if music_enabled else toggle_off_img
     sfx_toggle.image = toggle_on_img if sfx_enabled else toggle_off_img
 
+
 # Call this function initially to set the correct images
 update_toggle_images()
+
 
 # Function to draw text with rainbow colors
 def draw_rainbow_text(text, font, x, y):
@@ -516,11 +503,12 @@ def draw_rainbow_text(text, font, x, y):
         (75, 0, 130),   # Indigo
         (148, 0, 211)    # Violet
     ]
-    
+
     for i, char in enumerate(text):
         color = colors[i % len(colors)]  # Cycle through colors
         char_surface = font.render(char, True, color)
         screen.blit(char_surface, (x + i * char_surface.get_width(), y))
+
 
 # Load crash image for visual feedback
 crash_img = pygame.image.load("images/cars/crash.png").convert_alpha()
@@ -532,6 +520,17 @@ crash_clock = pygame.time.Clock()
 
 # Scale crash image to fit the screen
 crash_img = pygame.transform.scale(crash_img, (width, height))
+
+# Load enemy vehicle image
+john_deere_image = pygame.image.load("images/cars/john_deere.PNG").convert_alpha()
+
+# Enemy vehicle variables
+john_deere_rect = john_deere_image.get_rect()
+john_deere_spawned = False  # Track if the enemy vehicle is on the screen
+
+# Define a separate collision rectangle for john_deere
+john_deere_collision_rect = pygame.Rect(0, 0, 200, 340)
+# Width: 200, Height: 340
 
 while run:
     screen.fill((34, 139, 34))
@@ -552,7 +551,7 @@ while run:
             80,
             animation_counter
         )
-        
+ 
         # Draw main menu buttons
         if start_button.draw(screen):
             button_sound.play()
@@ -753,6 +752,39 @@ while run:
                 CAR_WIDTH - (COLLISION_MARGIN_X * 2),
                 CAR_HEIGHT - (COLLISION_MARGIN_Y * 2)
             )
+           
+
+            # Check if the enemy vehicle should spawn
+            if not john_deere_spawned and car2_loc.y > height:  # Ensure no other enemy car is on screen
+                
+                pygame.draw.rect(screen, (255, 0, 0), john_deere_collision_rect, 2)
+                # Randomly decide to spawn the enemy vehicle
+                if random.randint(0, 100) < 5:  # Adjust the probability as needed
+                    john_deere_spawned = True
+                    john_deere_rect.y = -john_deere_rect.height  # Start off-screen
+                    john_deere_rect.x = width // 2 - john_deere_rect.width // 2  # Centered in the middle of the road
+                    
+
+            # Update the john_deere vehicle position if it is spawned
+            if john_deere_spawned:
+                john_deere_rect.y += 5  # Move the john_deere vehicle down the screen
+
+                # Update the collision rectangle position
+                john_deere_collision_rect.topleft = (john_deere_rect.x+, john_deere_rect.y)
+
+                # Check if the john_deere vehicle has moved off the screen
+                if john_deere_rect.y > height:
+                    john_deere_spawned = False  # Reset the spawn state when it goes off-screen
+
+            # Draw the john_deere vehicle if it is spawned
+            if john_deere_spawned:
+                screen.blit(john_deere_image, john_deere_rect)
+
+            # Handle collision detection for john_deere with the player's car
+            if car_rect.colliderect(john_deere_collision_rect):
+                game_over = True  # Set game over state if there is a collision
+                if crash_sound:
+                    crash_sound.play()
 
             # Handle events
             for event in pygame.event.get():
@@ -922,6 +954,7 @@ while run:
                 # Restore original positions
                 start_button.rect.y = start_button_original_y
                 quit_button.rect.y = quit_button_original_y
+
 
     # Update the display
     pygame.display.flip()
