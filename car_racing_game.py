@@ -14,6 +14,7 @@ import textwrap  # Make sure to import the textwrap module
 import datetime  # Import datetime module for timestamps
 
 pygame.init()
+pygame.mixer.init(frequency=22050, size=-16, channels=2)  # Initialize mixer with specific settings
 
 # create game window first
 size = width, height = (800, 800)
@@ -154,11 +155,11 @@ def load_sound(path, default_volume=1.0):
 menu_music = load_sound("sounds/menu_music.wav", 0.5)
 game_music = load_sound("sounds/game_music.mp3", 0.5)
 crash_sound = load_sound("sounds/crash.wav", 0.7)
-button_sound = load_sound("sounds/click.wav", 0.3)
-car_driving_sound = load_sound("sounds/car_driving.mp3", 0.4)  # Add car driving sound
-
-# Near the top with other sound loading
-enemy1_pass_sound = load_sound("sounds/enemy1_pass.aiff", 0.3)  # Add enemy passing sound
+button_sound = load_sound("sounds/click.wav", 0.2)
+car_driving_sound = load_sound("sounds/car_driving.mp3", 0.6)  # Add car driving sound
+john_deere_sound = load_sound("sounds/john_deere.mp3", 0.1)  # Load John Deere sound
+enemy2_pass_sound = load_sound("sounds/passing-car.mp3", 0.3)  # Add enemy passing sound
+enemy1_pass_sound = load_sound("sounds/enemy1_pass.mp3", 0.3)  # Add enemy passing sound
 
 # Add a variable to track playing sounds
 current_music = None
@@ -317,7 +318,8 @@ car_loc.center = left_lane, height*0.8
 # load enemy cars
 enemy_1 = pygame.image.load("images/cars/enemy_1.png")
 enemy_2 = pygame.image.load("images/cars/enemy_2.png")
-enemy_3 = pygame.image.load("images/cars/john_deere.png")
+enemy_3 = pygame.image.load("images/cars/john_deere.png")  # Ensure this is the correct path
+john_deere = enemy_3  # Define john_deere variable
 enemy_cars = [enemy_1, enemy_2, enemy_3]  # List of enemy car images
 
 # Initialize enemy car with random image
@@ -632,8 +634,8 @@ while run:
             # Define x positions for each column
             rank_x = width//2 - 375
             name_x = rank_x + 65  # Adjust this value to create more space
-            score_x = name_x + 250
-            timestamp_x = score_x + 150
+            score_x = name_x + 225
+            timestamp_x = score_x + 185
 
             # Draw rank with outline
             rank_text = f"{i+1}."  # No extra space here
@@ -643,7 +645,7 @@ while run:
             draw_text_with_outline(name, font, (255, 255, 255), name_x, y_pos)
 
             # Draw score with outline
-            score_text = f"Level {score_val}"
+            score_text = f"Level: {score_val} "
             draw_text_with_outline(score_text, font, (255, 255, 255), score_x, y_pos)
 
             # Draw timestamp with outline
@@ -726,11 +728,36 @@ while run:
                 # Play sound when enemy1 appears
                 if car2 == enemy_1 and enemy1_pass_sound:
                     enemy1_pass_sound.play()
+                    john_deere_sound.stop()
+                    enemy2_pass_sound.stop()
+                if car2 == enemy_2 and enemy2_pass_sound:
+                    enemy2_pass_sound.play()
+                    john_deere_sound.stop()
+                    enemy1_pass_sound.stop()
+                # Play the John Deere sound when it spawns
+                if car2 == john_deere and john_deere_sound:
+                    if john_deere_sound and not john_deere_sound.get_num_channels():
+                        john_deere_sound.set_volume(0.1)  # Set volume to maximum
+                        john_deere_sound.play()
+                        enemy1_pass_sound.stop()
+                        enemy2_pass_sound.stop()
 
             # Also play sound when enemy1 first enters the screen
             if car2_loc.top <= 0 and car2_loc.bottom > 0:  # Just entered screen
                 if car2 == enemy_1 and enemy1_pass_sound:
+                    john_deere_sound.stop()
                     enemy1_pass_sound.play()
+                    enemy2_pass_sound.stop()
+                if car2 == enemy_2 and enemy2_pass_sound:
+                    enemy2_pass_sound.play()
+                    john_deere_sound.stop()
+                    enemy1_pass_sound.stop()
+                if car2 == john_deere and john_deere_sound:
+                    if john_deere_sound and not john_deere_sound.get_num_channels():
+                        john_deere_sound.set_volume(0.1)  # Set volume to maximum
+                        john_deere_sound.play()  # Play the sound
+                        enemy1_pass_sound.stop()
+                        enemy2_pass_sound.stop()
 
             # Animate car tilt
             if car_angle > 0:
@@ -756,7 +783,6 @@ while run:
 
             # Check if the enemy vehicle should spawn
             if not john_deere_spawned and car2_loc.y > height:  # Ensure no other enemy car is on screen
-                
                 pygame.draw.rect(screen, (255, 0, 0), john_deere_collision_rect, 2)
                 # Randomly decide to spawn the enemy vehicle
                 if random.randint(0, 100) < 5:  # Adjust the probability as needed
@@ -764,17 +790,28 @@ while run:
                     john_deere_rect.y = -john_deere_rect.height  # Start off-screen
                     john_deere_rect.x = width // 2 - john_deere_rect.width // 2  # Centered in the middle of the road
                     
+                    # Play the John Deere sound when it spawns
+                    if john_deere_sound and not john_deere_sound.get_num_channels():
+                        print("Playing John Deere sound.")
+                        john_deere_sound.set_volume(1.0)  # Set volume to maximum
+                        john_deere_sound.play()  # Play the sound
+                    else:
+                        print("John Deere sound is already playing or not loaded.")
 
             # Update the john_deere vehicle position if it is spawned
             if john_deere_spawned:
                 john_deere_rect.y += 5  # Move the john_deere vehicle down the screen
 
                 # Update the collision rectangle position
-                john_deere_collision_rect.topleft = (john_deere_rect.x+, john_deere_rect.y)
+                john_deere_collision_rect.topleft = (john_deere_rect.x, john_deere_rect.y)
 
                 # Check if the john_deere vehicle has moved off the screen
                 if john_deere_rect.y > height:
                     john_deere_spawned = False  # Reset the spawn state when it goes off-screen
+                    
+                    # Stop the John Deere sound if it is playing
+                    if john_deere_sound.get_num_channels() > 0:  # Check if the sound is currently playing
+                        john_deere_sound.stop()  # Stop the sound
 
             # Draw the john_deere vehicle if it is spawned
             if john_deere_spawned:
