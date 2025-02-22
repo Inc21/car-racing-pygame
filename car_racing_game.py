@@ -77,7 +77,7 @@ game_over = False
 game_over_sound_played = False
 
 # set the font of the text
-font = pygame.font.SysFont("arialblack", 35)
+font = pygame.font.SysFont("arialblack", 30)
 
 # Define dark green color for game over text
 dark_green_col = (0, 100, 0)
@@ -119,14 +119,14 @@ def init_scenery():
         x_offset = random.randint(150, 220)  # Larger offset for bigger objects
         left_scenery.append({
             "type": scenery_type,
-            "pos": (width//2 - road_w//2 - x_offset, y)
+            "pos": (width//2 - road_w//2 - 15 - x_offset, y)
         })
         
         # Right side - independent placement
         scenery_type = random.choice(["tree", "tree2", "bush"])  # Correct selection
         right_scenery.append({
             "type": scenery_type,
-            "pos": (width//2 + road_w//2 + x_offset, y)
+            "pos": (width//2 + 75 + x_offset, y)
         })
         
         y += spacing
@@ -455,16 +455,17 @@ def draw_scenery():
 def draw_how_to_play():
     how_to_play_text = [
         "Use the arrow keys to steer your Mustang.",
-        "Avoid obstacles on the road to keep your car safe.",
+        "Avoid other vehicles on the road to keep your car safe.",
+        "Do not go off the road or you will lose!",
         "Press the Space Bar to pause the game.",
         "The game gradually increases in speed and levels as you progress.",
-        "Try to achieve the highest score possible!"
+        "Try to stay alive as long as possible to achieve the highest score!"
     ]
-    
+
     padding = 50  # Keep the original padding
     line_height = 30  # Increased height for each line to add gaps
     max_width = width - (2 * padding)  # Calculate maximum width for text
-    y_position = 150  # Starting Y position for the first line
+    y_position = 50  # Starting Y position for the first line
     x_offset = 100  # Additional offset to move text to the right
 
     for index, line in enumerate(how_to_play_text, start=1):
