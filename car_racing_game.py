@@ -283,6 +283,10 @@ pygame.draw.rect(
     (road_x, 0, road_w, height)
 )
 
+# Draw debugging guides for road boundaries
+pygame.draw.line(screen, (255, 0, 0), (road_x, 0), (road_x, height), 2)  # Thinner red line for road_x
+pygame.draw.line(screen, (255, 0, 0), (road_right_x, 0), (road_right_x, height), 2)  # Thinner red line for road_right_x
+
 # draw the center line
 pygame.draw.rect(
     screen,
@@ -326,21 +330,21 @@ counter = 0
 run = True
 
 # Update the adjust_music_speed function
-def adjust_music_speed(level):
-    global current_music
-    if current_music:
-        pygame.mixer.stop()
-    # Play at increased speed based on level
-    game_music_file = f"sounds/game_music_level_{min(level, 5)}.wav"
+# def adjust_music_speed(level):
+#     global current_music
+#     if current_music:
+#         pygame.mixer.stop()
+#     # Play at increased speed based on level
+#     game_music_file = f"sounds/game_music_level_{min(level, 5)}.wav"
     
-    new_music = load_sound(game_music_file)
-    if new_music:
-        current_music = new_music
-    elif game_music:  # Fallback to base game music if level variant not found
-        current_music = game_music
+#     new_music = load_sound(game_music_file)
+#     if new_music:
+#         current_music = new_music
+#     elif game_music:  # Fallback to base game music if level variant not found
+#         current_music = game_music
     
-    if current_music:
-        current_music.play()
+#     if current_music:
+#         current_music.play()
 
 
 # After loading sounds, add this function
@@ -604,6 +608,8 @@ while run:
                     crash_sound.stop()
                 if enemy1_pass_sound:
                     enemy1_pass_sound.stop()
+                if car_driving_sound:
+                    car_driving_sound.stop()
             update_toggle_images()  # Update button image
 
         if back_button.draw(screen):
@@ -625,13 +631,13 @@ while run:
             timestamp = score.get('timestamp', 'N/A')  # Get timestamp
 
             # Define x positions for each column
-            rank_x = width//2 - 350
-            name_x = rank_x + 50
+            rank_x = width//2 - 375
+            name_x = rank_x + 65  # Adjust this value to create more space
             score_x = name_x + 250
             timestamp_x = score_x + 150
 
             # Draw rank with outline
-            rank_text = f"{i+1}."
+            rank_text = f"{i+1}."  # No extra space here
             draw_text_with_outline(rank_text, font, (255, 255, 255), rank_x, y_pos)
 
             # Draw name with outline
@@ -666,9 +672,6 @@ while run:
                 speed += 1
                 counter = 0
                 print("Level up! Speed increased to", speed)
-                # Save current music state
-                was_playing = current_music is not None
-                adjust_music_speed(speed)
                 # Restart car driving sound if it was stopped
                 if car_driving_sound:
                     car_driving_sound.stop()  # Stop any existing playback
@@ -789,21 +792,22 @@ while run:
                     car_angle = -TILT_ANGLE
 
             # Check if the car is off the tarmac
-            if car_rect.left < road_x or car_rect.right > road_right_x:
+            if car_rect.left-80 < road_x or car_rect.right+80 > road_right_x:
                 on_course = False  # The car is off the course
-                print("Car is off the course!")
                 game_over = True  # Set game over state
+                music_enabled = False
+                sfx_enabled = False
+                car_driving_sound.stop()
                 if crash_sound:
                     crash_sound.play()
                 # Flash the screen red
                 for _ in range(5):
                     screen.fill((255, 0, 0))
                     pygame.display.flip()
-                    pygame.time.delay(70)
+                    pygame.time.delay(10)
                 screen.fill((34, 139, 34))  # Restore background
             else:
                 on_course = True  # The car is on the course
-                print("Car is on the course.")
 
             # Check for collision between the two rectangles
             if car_rect.colliderect(car2_rect):
@@ -919,9 +923,11 @@ while run:
                 start_button.rect.y = start_button_original_y
                 quit_button.rect.y = quit_button_original_y
 
+    # Update the display
+    pygame.display.flip()
+
     # limits FPS to 60
     clock.tick(60)
-    pygame.display.flip()
 
     # event listeners
     for event in pygame.event.get():
