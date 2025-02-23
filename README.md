@@ -11,7 +11,7 @@ A thrilling car racing game where you control a Mustang and dodge various vehicl
 - Do not go off the road or you will lose!
 - The game speeds up as your level increases
 - Press Space to pause the game
-- Try to stay alive as long as possible to achieve the highest score!git add
+- Try to stay alive as long as possible to achieve the highest score!
 
 ## 🚗 Vehicles
 
