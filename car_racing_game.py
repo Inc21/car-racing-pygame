@@ -191,14 +191,14 @@ CAR_WIDTH = 105  # All cars are 105px wide
 CAR_HEIGHT = 240  # All cars are 240px high
 
 # Define John Deere dimensions
-JOHN_DEERE_WIDTH = 200
-JOHN_DEERE_HEIGHT = 341
+JOHN_DEERE_WIDTH = 210
+JOHN_DEERE_HEIGHT = 413
 
 # Adjust collision box size (make it slightly smaller than actual car for better gameplay)
 COLLISION_MARGIN_X = 105   # Reduced margin for accurate collision detection
 COLLISION_MARGIN_Y = 240
-JOHN_DEERE_COLLISION_MARGIN_X = 190
-JOHN_DEERE_COLLISION_MARGIN_Y = 330
+JOHN_DEERE_COLLISION_MARGIN_X = 200
+JOHN_DEERE_COLLISION_MARGIN_Y = 400
 
 # Add a variable to track if the car is on the course
 on_course = True  # Initially, the car is on the course
@@ -323,7 +323,7 @@ car_loc.center = left_lane, height*0.8
 # load enemy cars
 enemy_1 = pygame.image.load("images/cars/enemy_1.png")
 enemy_2 = pygame.image.load("images/cars/enemy_2.png")
-john_deere = pygame.image.load("images/cars/john_deere.png")  # Load John Deere image
+john_deere = pygame.image.load("images/cars/john_deere.PNG")  # Load John Deere image
 enemy_cars = [enemy_1, enemy_2, john_deere]  # List of enemy car images
 
 # Initialize enemy car with random image
@@ -473,17 +473,17 @@ def draw_how_to_play():
     ]
 
     padding = 50  # Keep the original padding
-    line_height = 30  # Increased height for each line to add gaps
-    max_width = width - (2 * padding)  # Calculate maximum width for text
+    line_height = 35  # Increased height for each line to add gaps
+    max_width = width  # Calculate maximum width for text
     y_position = 50  # Starting Y position for the first line
-    x_offset = 100  # Additional offset to move text to the right
+    x_offset = 50  # Additional offset to move text to the right
 
     for index, line in enumerate(how_to_play_text, start=1):
         # Wrap the text to fit within the specified width
         wrapped_lines = textwrap.wrap(f"{index}. {line}", width=max_width // font.size('A')[0])  # Adjust width based on font size
         
         for wrapped_line in wrapped_lines:
-            draw_text_with_outline(wrapped_line, font, (255, 255, 255), padding + x_offset, y_position)  # Add outline to text
+            draw_text_with_outline(wrapped_line, font, (255, 255, 255), padding*3, y_position)  # Add outline to text
             y_position += line_height  # Move down for the next line
 
         # Increment y_position for the next numbered item
@@ -684,8 +684,8 @@ while run:
             if counter == 800:
                 speed += 1
                 counter = 0
-                # Restart car driving sound if it was stopped
-                if car_driving_sound:
+                # Only restart car driving sound if sfx are enabled
+                if car_driving_sound and sfx_enabled:
                     car_driving_sound.stop()  # Stop any existing playback
                     car_driving_sound.play(-1)  # Restart the loop
 
@@ -875,8 +875,6 @@ while run:
             if car_rect.left-80 < road_x or car_rect.right+80 > road_right_x:
                 on_course = False  # The car is off the course
                 game_over = True  # Set game over state
-                music_enabled = False
-                sfx_enabled = False
                 car_driving_sound.stop()
                 if crash_sound and sfx_enabled:
                     crash_sound.play()
@@ -951,10 +949,20 @@ while run:
 
         if game_over:
             if not game_over_sound_played:
-                if crash_sound and sfx_enabled:
-                    crash_sound.play()
+                # Stop all ongoing sounds
                 if current_music:
                     current_music.stop()
+                if car_driving_sound:
+                    car_driving_sound.stop()
+                if john_deere_sound:
+                    john_deere_sound.stop()
+                if enemy1_pass_sound:
+                    enemy1_pass_sound.stop()
+                if enemy2_pass_sound:
+                    enemy2_pass_sound.stop()
+                # Only play crash sound if sfx are enabled
+                if crash_sound and sfx_enabled:
+                    crash_sound.play()
                 game_over_sound_played = True
                 entering_username = score_qualifies(speed)
                 username = ""
@@ -1002,15 +1010,30 @@ while run:
                     # Reset game state
                     counter = 0
                     john_deere_spawned = False
-                    # Start game music if enabled
+                    # Reset scenery
+                    init_scenery()
+                    # Stop any currently playing sounds
                     if current_music:
                         current_music.stop()
+                    if car_driving_sound:
+                        car_driving_sound.stop()
+                    if john_deere_sound:
+                        john_deere_sound.stop()
+                    if enemy1_pass_sound:
+                        enemy1_pass_sound.stop()
+                    if enemy2_pass_sound:
+                        enemy2_pass_sound.stop()
+                    # Start game music if enabled
                     if game_music and music_enabled:
                         current_music = game_music
                         current_music.play(-1)
                     # Start car sound if enabled
                     if car_driving_sound and sfx_enabled:
                         car_driving_sound.play(-1)
+                    # Reset car angle
+                    car_angle = 0
+                    # Reset on_course state
+                    on_course = True
                     menu_state = "game"
                 
                 if quit_button.draw(screen):
