@@ -77,7 +77,7 @@ game_over = False
 game_over_sound_played = False
 
 # set the font of the text
-font = pygame.font.SysFont("arialblack", 30)
+font = pygame.font.SysFont("comicsans", 35)
 
 # Define dark green color for game over text
 dark_green_col = (0, 100, 0)
@@ -181,8 +181,8 @@ road_y = 0  # Track road marking position
 base_speed = 2  # Lower initial speed
 marking_gap = 100  # Increased gap between markings (was 50)
 car_angle = 0  # Current car rotation angle
-TILT_ANGLE = 15  # Maximum tilt angle in degrees
-TILT_SPEED = 3    # Speed at which the car tilts
+TILT_ANGLE = 25  # Maximum tilt angle in degrees
+TILT_SPEED = 5  # Speed at which the car tilts
 DECAY_RATE = 2    # Rate at which the car returns to upright position
 LANE_CHANGE_SPEED = 12  # Increased from 8
 
@@ -190,12 +190,19 @@ LANE_CHANGE_SPEED = 12  # Increased from 8
 CAR_WIDTH = 105  # All cars are 105px wide
 CAR_HEIGHT = 240  # All cars are 240px high
 
+# Define John Deere dimensions
+JOHN_DEERE_WIDTH = 200
+JOHN_DEERE_HEIGHT = 341
+
 # Adjust collision box size (make it slightly smaller than actual car for better gameplay)
 COLLISION_MARGIN_X = 105   # Reduced margin for accurate collision detection
-COLLISION_MARGIN_Y = 240   # Reduced margin for accurate collision detection
+COLLISION_MARGIN_Y = 240
+JOHN_DEERE_COLLISION_MARGIN_X = 190
+JOHN_DEERE_COLLISION_MARGIN_Y = 330
 
 # Add a variable to track if the car is on the course
 on_course = True  # Initially, the car is on the course
+
 
 # Before the game variables section, add these functions
 def load_highscores():
@@ -254,9 +261,7 @@ highscores = load_highscores()
 
 
 def show_level():
-    level_obj = pygame.font.SysFont("comicsans", 35, True)
-    level_txt = level_obj.render("Level: " + str(speed), 1, (255, 255, 255))
-    screen.blit(level_txt, (5, 5))
+    draw_text_with_outline(f"Level: {speed}", font, text_col, 5, 5)
 
 
 def draw_text(text, font, text_col, x, y):
@@ -318,14 +323,17 @@ car_loc.center = left_lane, height*0.8
 # load enemy cars
 enemy_1 = pygame.image.load("images/cars/enemy_1.png")
 enemy_2 = pygame.image.load("images/cars/enemy_2.png")
-enemy_3 = pygame.image.load("images/cars/john_deere.png")  # Ensure this is the correct path
-john_deere = enemy_3  # Define john_deere variable
-enemy_cars = [enemy_1, enemy_2, enemy_3]  # List of enemy car images
+john_deere = pygame.image.load("images/cars/john_deere.png")  # Load John Deere image
+enemy_cars = [enemy_1, enemy_2, john_deere]  # List of enemy car images
 
 # Initialize enemy car with random image
 car2 = random.choice(enemy_cars)
-car2_loc = car2.get_rect()
-car2_loc.center = right_lane, height*0.2
+if car2 == john_deere:
+    car2_loc = john_deere.get_rect()
+    car2_loc.center = right_lane, height*0.2
+else:
+    car2_loc = car2.get_rect()
+    car2_loc.center = right_lane, height*0.2
 
 counter = 0
 # game loop
@@ -335,11 +343,13 @@ run = True
 # After loading sounds, add this function
 def play_menu_music():
     global current_music
-    if menu_music and (not current_music or current_music != menu_music):
+    if menu_music and music_enabled and (not current_music or current_music != menu_music):
         if current_music:
             current_music.stop()
         current_music = menu_music
         current_music.play(-1)  # -1 makes it loop indefinitely
+    elif not music_enabled and current_music:
+        current_music.stop()
 
 
 # Modify the handle_username_input function to be more restrictive
@@ -377,7 +387,7 @@ def score_qualifies(score):
 
 
 # Near the top with other font definitions
-title_font = pygame.font.SysFont("arialblack", 60, bold=True)  # Bigger and bolder
+title_font = pygame.font.SysFont("comicsans", 70, bold=True)  # Bigger and bolder
 
 # Define a color palette for the title
 darker_blue = (23, 139, 224)  # Darker blue
@@ -473,7 +483,7 @@ def draw_how_to_play():
         wrapped_lines = textwrap.wrap(f"{index}. {line}", width=max_width // font.size('A')[0])  # Adjust width based on font size
         
         for wrapped_line in wrapped_lines:
-            screen.blit(font.render(wrapped_line, True, (255, 255, 255)), (padding + x_offset, y_position))  # Add offset to x position
+            draw_text_with_outline(wrapped_line, font, (255, 255, 255), padding + x_offset, y_position)  # Add outline to text
             y_position += line_height  # Move down for the next line
 
         # Increment y_position for the next numbered item
@@ -526,14 +536,12 @@ crash_img = pygame.transform.scale(crash_img, (width, height))
 
 # Load enemy vehicle image
 john_deere_image = pygame.image.load("images/cars/john_deere.PNG").convert_alpha()
+john_deere_rect = john_deere_image.get_rect()
+# Initialize collision rectangle for John Deere
+john_deere_collision_rect = pygame.Rect(0, 0, 180, 320)  # Slightly smaller than actual size for better gameplay
 
 # Enemy vehicle variables
-john_deere_rect = john_deere_image.get_rect()
 john_deere_spawned = False  # Track if the enemy vehicle is on the screen
-
-# Define a separate collision rectangle for john_deere
-john_deere_collision_rect = pygame.Rect(0, 0, 200, 340)
-# Width: 200, Height: 340
 
 while run:
     screen.fill((34, 139, 34))
@@ -557,32 +565,37 @@ while run:
  
         # Draw main menu buttons
         if start_button.draw(screen):
-            button_sound.play()
+            if button_sound and sfx_enabled:
+                button_sound.play()
             if current_music:
                 current_music.stop()
-            if game_music:
+            if game_music and music_enabled:
                 current_music = game_music
                 current_music.play(-1)  # Loop game music
-            if car_driving_sound:
+            if car_driving_sound and sfx_enabled:
                 car_driving_sound.play(-1)  # Loop car sound
             game_started = True
             menu_state = "game"
         if options_button.draw(screen):
-            button_sound.play()
+            if button_sound and sfx_enabled:
+                button_sound.play()
             menu_state = "options"
         if highscore_button.draw(screen):
-            button_sound.play()
+            if button_sound and sfx_enabled:
+                button_sound.play()
             menu_state = "highscore"
         if quit_button.draw(screen):
-            button_sound.play()
+            if button_sound and sfx_enabled:
+                button_sound.play()
             run = False
 
     elif menu_state == "options":
         play_menu_music()  # Play menu music in options
         # Draw options buttons
         if instructions_button.draw(screen):  # New button for instructions
+            if button_sound and sfx_enabled:
+                button_sound.play()
             menu_state = "instructions"  # Change to instructions state
-            button_sound.play()
         
         # Draw toggle buttons for music
         draw_text("Music:", font, text_col, width//2 - 280, 260)  # Label for music toggle
@@ -590,10 +603,13 @@ while run:
         music_toggle.rect.y = 250  # Align with the label
         if music_toggle.draw(screen):
             music_enabled = not music_enabled  # Toggle music state
-            if music_enabled and menu_music and not menu_music.get_num_channels():
-                menu_music.play(-1)
-            elif not music_enabled and menu_music:
-                menu_music.stop()
+            if music_enabled:
+                if menu_state == "game":
+                    if game_music:
+                        current_music = game_music
+                        current_music.play(-1)
+                else:
+                    play_menu_music()
             update_toggle_images()  # Update button image
 
         # Draw toggle buttons for sound effects
@@ -602,21 +618,14 @@ while run:
         sfx_toggle.rect.y = 360  # Increased Y position for more space
         if sfx_toggle.draw(screen):
             sfx_enabled = not sfx_enabled  # Toggle sound effects state
-            if not sfx_enabled:
-                # Stop all sound effects if needed
-                if button_sound:
-                    button_sound.stop()
-                if crash_sound:
-                    crash_sound.stop()
-                if enemy1_pass_sound:
-                    enemy1_pass_sound.stop()
-                if car_driving_sound:
-                    car_driving_sound.stop()
+            if not sfx_enabled and car_driving_sound:
+                car_driving_sound.stop()
             update_toggle_images()  # Update button image
 
         if back_button.draw(screen):
+            if button_sound and sfx_enabled:
+                button_sound.play()
             menu_state = previous_menu_state  # Return to previous menu state
-            button_sound.play()
 
     elif menu_state == "highscore":
         play_menu_music()
@@ -654,7 +663,8 @@ while run:
         
         if back_button.draw(screen):
             menu_state = "startup"
-            button_sound.play()
+            if button_sound and sfx_enabled:
+                button_sound.play()
 
     elif menu_state == "instructions":
         screen.fill((34, 139, 34))  # Background color
@@ -665,7 +675,8 @@ while run:
         # Back button to return to options menu
         if back_button.draw(screen):
             menu_state = "options"  # Return to options menu
-            button_sound.play()
+            if button_sound and sfx_enabled:
+                button_sound.play()
 
     elif menu_state == "game":
         if game_over is not True and game_paused is not True:
@@ -673,7 +684,6 @@ while run:
             if counter == 800:
                 speed += 1
                 counter = 0
-                print("Level up! Speed increased to", speed)
                 # Restart car driving sound if it was stopped
                 if car_driving_sound:
                     car_driving_sound.stop()  # Stop any existing playback
@@ -722,21 +732,23 @@ while run:
                 # Reset enemy car position and randomly choose new enemy car image
                 car2 = random.choice(enemy_cars)
                 car2_loc = car2.get_rect()
+                # Add random offset to lane position
+                lane_offset = random.randint(-40, 40)  # Adjust these values to control spread
                 if random.randint(0, 1):
-                    car2_loc.center = (left_lane, -car2_loc.height)
+                    car2_loc.center = (left_lane + lane_offset, -car2_loc.height)
                 else:
-                    car2_loc.center = (right_lane, -car2_loc.height)
+                    car2_loc.center = (right_lane + lane_offset, -car2_loc.height)
                 # Play sound when enemy1 appears
-                if car2 == enemy_1 and enemy1_pass_sound:
+                if car2 == enemy_1 and enemy1_pass_sound and sfx_enabled:
                     enemy1_pass_sound.play()
                     john_deere_sound.stop()
                     enemy2_pass_sound.stop()
-                if car2 == enemy_2 and enemy2_pass_sound:
+                if car2 == enemy_2 and enemy2_pass_sound and sfx_enabled:
                     enemy2_pass_sound.play()
                     john_deere_sound.stop()
                     enemy1_pass_sound.stop()
                 # Play the John Deere sound when it spawns
-                if car2 == john_deere and john_deere_sound:
+                if car2 == john_deere and john_deere_sound and sfx_enabled:
                     if john_deere_sound and not john_deere_sound.get_num_channels():
                         john_deere_sound.set_volume(0.1)  # Set volume to maximum
                         john_deere_sound.play()
@@ -745,15 +757,15 @@ while run:
 
             # Also play sound when enemy1 first enters the screen
             if car2_loc.top <= 0 and car2_loc.bottom > 0:  # Just entered screen
-                if car2 == enemy_1 and enemy1_pass_sound:
+                if car2 == enemy_1 and enemy1_pass_sound and sfx_enabled:
                     john_deere_sound.stop()
                     enemy1_pass_sound.play()
                     enemy2_pass_sound.stop()
-                if car2 == enemy_2 and enemy2_pass_sound:
+                if car2 == enemy_2 and enemy2_pass_sound and sfx_enabled:
                     enemy2_pass_sound.play()
                     john_deere_sound.stop()
                     enemy1_pass_sound.stop()
-                if car2 == john_deere and john_deere_sound:
+                if car2 == john_deere and john_deere_sound and sfx_enabled:
                     if john_deere_sound and not john_deere_sound.get_num_channels():
                         john_deere_sound.set_volume(0.1)  # Set volume to maximum
                         john_deere_sound.play()  # Play the sound
@@ -773,18 +785,28 @@ while run:
                 CAR_WIDTH - (COLLISION_MARGIN_X * 2),
                 CAR_HEIGHT - (COLLISION_MARGIN_Y * 2)
             )
-
-            car2_rect = pygame.Rect(
-                car2_loc.x + COLLISION_MARGIN_X,
-                car2_loc.y + COLLISION_MARGIN_Y,
-                CAR_WIDTH - (COLLISION_MARGIN_X * 2),
-                CAR_HEIGHT - (COLLISION_MARGIN_Y * 2)
-            )
-           
+            if car2 == john_deere:
+                car2_rect = pygame.Rect(
+                    car2_loc.x + JOHN_DEERE_COLLISION_MARGIN_X,
+                    car2_loc.y + JOHN_DEERE_COLLISION_MARGIN_Y,
+                    JOHN_DEERE_WIDTH - (JOHN_DEERE_COLLISION_MARGIN_X * 2),
+                    JOHN_DEERE_HEIGHT - (JOHN_DEERE_COLLISION_MARGIN_Y * 2)
+                )
+                pygame.draw.rect(screen, (255, 0, 0), car2_rect, 2)
+            else:
+                car2_rect = pygame.Rect(
+                    car2_loc.x + COLLISION_MARGIN_X,
+                    car2_loc.y + COLLISION_MARGIN_Y,
+                    CAR_WIDTH - (COLLISION_MARGIN_X * 2),
+                    CAR_HEIGHT - (COLLISION_MARGIN_Y * 2)
+                )
+ 
+            # Update John Deere collision box
+            john_deere_collision_rect.centerx = john_deere_rect.centerx
+            john_deere_collision_rect.centery = john_deere_rect.centery
 
             # Check if the enemy vehicle should spawn
             if not john_deere_spawned and car2_loc.y > height:  # Ensure no other enemy car is on screen
-                pygame.draw.rect(screen, (255, 0, 0), john_deere_collision_rect, 2)
                 # Randomly decide to spawn the enemy vehicle
                 if random.randint(0, 100) < 5:  # Adjust the probability as needed
                     john_deere_spawned = True
@@ -793,36 +815,24 @@ while run:
                     
                     # Play the John Deere sound when it spawns
                     if john_deere_sound and not john_deere_sound.get_num_channels():
-                        print("Playing John Deere sound.")
                         john_deere_sound.set_volume(1.0)  # Set volume to maximum
                         john_deere_sound.play()  # Play the sound
-                    else:
-                        print("John Deere sound is already playing or not loaded.")
 
             # Update the john_deere vehicle position if it is spawned
             if john_deere_spawned:
                 john_deere_rect.y += 5  # Move the john_deere vehicle down the screen
 
-                # Update the collision rectangle position
-                john_deere_collision_rect.topleft = (john_deere_rect.x, john_deere_rect.y)
-
-                # Check if the john_deere vehicle has moved off the screen
-                if john_deere_rect.y > height:
-                    john_deere_spawned = False  # Reset the spawn state when it goes off-screen
-                    
-                    # Stop the John Deere sound if it is playing
-                    if john_deere_sound.get_num_channels() > 0:  # Check if the sound is currently playing
-                        john_deere_sound.stop()  # Stop the sound
-
-            # Draw the john_deere vehicle if it is spawned
-            if john_deere_spawned:
-                screen.blit(john_deere_image, john_deere_rect)
-
             # Handle collision detection for john_deere with the player's car
             if car_rect.colliderect(john_deere_collision_rect):
                 game_over = True  # Set game over state if there is a collision
-                if crash_sound:
+                if crash_sound and sfx_enabled:
                     crash_sound.play()
+                # Flash the screen red
+                for _ in range(5):
+                    screen.fill((255, 0, 0))
+                    pygame.display.flip()
+                    pygame.time.delay(10)
+                screen.fill((34, 139, 34))  # Restore background
 
             # Handle events
             for event in pygame.event.get():
@@ -868,7 +878,7 @@ while run:
                 music_enabled = False
                 sfx_enabled = False
                 car_driving_sound.stop()
-                if crash_sound:
+                if crash_sound and sfx_enabled:
                     crash_sound.play()
                 # Flash the screen red
                 for _ in range(5):
@@ -889,8 +899,14 @@ while run:
                 
                 # Set game_over to True and play crash sound
                 game_over = True
-                if crash_sound:
+                if crash_sound and sfx_enabled:
                     crash_sound.play()
+                # Flash the screen red
+                for _ in range(5):
+                    screen.fill((255, 0, 0))
+                    pygame.display.flip()
+                    pygame.time.delay(10)
+                screen.fill((34, 139, 34))  # Restore background
 
             show_level()
 
@@ -899,40 +915,43 @@ while run:
             draw_rotated_car(screen, car, car_loc, car_angle)
 
             # Draw pause instruction text last (on top of everything)
-            small_font = pygame.font.SysFont("arialblack", 20)
+            small_font = pygame.font.SysFont("comicsans", 20)
             pause_text1 = "Press"
             pause_text2 = "SPACE"
             pause_text3 = "to pause"
             
             # Draw three lines with small vertical gaps
-            draw_text(pause_text1, small_font, text_col, 10, height - 85)
-            draw_text(pause_text2, small_font, text_col, 10, height - 60)
-            draw_text(pause_text3, small_font, text_col, 10, height - 35)
+            draw_text_with_outline(pause_text1, small_font, text_col, 10, height - 85)
+            draw_text_with_outline(pause_text2, small_font, text_col, 10, height - 60)
+            draw_text_with_outline(pause_text3, small_font, text_col, 10, height - 35)
 
         # Add pause menu handling
         if game_paused:
             # Draw pause menu buttons
             if resume_button.draw(screen):
-                button_sound.play()
+                if button_sound and sfx_enabled:
+                    button_sound.play()
                 if current_music:
                     current_music.stop()
-                current_music = game_music
-                current_music.play(-1)  # Loop game music
-                if car_driving_sound:
+                if music_enabled:
+                    current_music = game_music
+                    current_music.play(-1)  # Loop game music
+                if car_driving_sound and sfx_enabled:
                     car_driving_sound.play(-1)  # Loop car sound
                 game_paused = False
             if options_button.draw(screen):
                 previous_menu_state = "game"  # Remember we came from game/pause menu
                 menu_state = "options"
             if quit_button.draw(screen):
-                button_sound.play()
+                if button_sound and sfx_enabled:
+                    button_sound.play()
                 menu_state = "startup"  # Return to main menu instead of quitting
                 game_paused = False
                 play_menu_music()
 
         if game_over:
             if not game_over_sound_played:
-                if crash_sound:
+                if crash_sound and sfx_enabled:
                     crash_sound.play()
                 if current_music:
                     current_music.stop()
@@ -972,22 +991,42 @@ while run:
                 
                 # Draw buttons at new positions
                 if start_button.draw(screen):
-                    button_sound.play()
+                    if button_sound and sfx_enabled:
+                        button_sound.play()
                     game_over = False
                     game_over_sound_played = False
                     speed = 1
+                    # Reset car positions
                     car_loc.center = left_lane, height*0.8
                     car2_loc.center = right_lane, height*0.2
+                    # Reset game state
+                    counter = 0
+                    john_deere_spawned = False
+                    # Start game music if enabled
+                    if current_music:
+                        current_music.stop()
+                    if game_music and music_enabled:
+                        current_music = game_music
+                        current_music.play(-1)
+                    # Start car sound if enabled
+                    if car_driving_sound and sfx_enabled:
+                        car_driving_sound.play(-1)
+                    menu_state = "game"
                 
                 if quit_button.draw(screen):
-                    button_sound.play()
+                    if button_sound and sfx_enabled:
+                        button_sound.play()
                     play_menu_music()
                     menu_state = "startup"
                     game_over = False
                     game_over_sound_played = False
                     speed = 1
+                    # Reset car positions
                     car_loc.center = left_lane, height*0.8
                     car2_loc.center = right_lane, height*0.2
+                    # Reset game state
+                    counter = 0
+                    john_deere_spawned = False
                 
                 # Restore original positions
                 start_button.rect.y = start_button_original_y
