@@ -12,6 +12,7 @@ from pygame.locals import (
 )
 import textwrap  # Make sure to import the textwrap module
 import datetime  # Import datetime module for timestamps
+import os
 
 pygame.init()
 pygame.mixer.init(frequency=22050, size=-16, channels=2)  # Initialize mixer with specific settings
@@ -542,6 +543,16 @@ john_deere_collision_rect = pygame.Rect(0, 0, 180, 320)  # Slightly smaller than
 
 # Enemy vehicle variables
 john_deere_spawned = False  # Track if the enemy vehicle is on the screen
+
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    
+    return os.path.join(base_path, relative_path)
 
 while run:
     screen.fill((34, 139, 34))
